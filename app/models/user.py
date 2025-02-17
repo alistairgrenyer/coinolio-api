@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict, validator
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON, Enum as SQLEnum, Index
 from sqlalchemy.orm import relationship
 
@@ -99,22 +99,25 @@ class RefreshToken(Base):
 # Pydantic Models
 class PortfolioData(BaseModel):
     """Schema for the portfolio data JSON structure"""
-    assets: Dict[str, Dict[str, Any]]  # coin_id -> asset details
+    assets: Dict[str, Dict[str, Any]]
     settings: Dict[str, Any]
     metadata: Dict[str, Any]
     schema_version: str = "1.0.0"
 
-    @validator('assets')
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("assets")
+    @classmethod
     def validate_assets(cls, v):
-        for asset_id, asset in v.items():
-            required_fields = {'amount', 'cost_basis'}
-            if not all(field in asset for field in required_fields):
-                raise ValueError(f"Asset {asset_id} missing required fields: {required_fields}")
+        if not v:
+            raise ValueError("Portfolio must contain at least one asset")
         return v
 
 class PortfolioBase(BaseModel):
     name: str
     description: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class PortfolioCreate(PortfolioBase):
     data: PortfolioData
@@ -124,6 +127,8 @@ class PortfolioUpdate(BaseModel):
     description: Optional[str] = None
     data: Optional[PortfolioData] = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 class PortfolioVersionResponse(BaseModel):
     version: int
     data: PortfolioData
@@ -132,8 +137,7 @@ class PortfolioVersionResponse(BaseModel):
     asset_count: int
     change_summary: Optional[Dict[str, Any]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PortfolioResponse(PortfolioBase):
     id: int
@@ -147,11 +151,12 @@ class PortfolioResponse(PortfolioBase):
     last_sync_at: Optional[datetime]
     versions: List[PortfolioVersionResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserBase(BaseModel):
     email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
 
 class UserCreate(UserBase):
     password: str
@@ -167,15 +172,18 @@ class UserResponse(UserBase):
     stripe_subscription_id: Optional[str] = None
     portfolios: List[PortfolioResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
 
+    model_config = ConfigDict(from_attributes=True)
+
 class TokenData(BaseModel):
     email: Optional[str] = None
     role: Optional[UserRole] = None
     subscription_tier: Optional[SubscriptionTier] = None
+
+    model_config = ConfigDict(from_attributes=True)

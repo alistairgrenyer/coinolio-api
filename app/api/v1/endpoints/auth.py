@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -31,7 +31,7 @@ def create_user(db: Session, user: UserCreate):
 
 def create_refresh_token(db: Session, user_id: int) -> str:
     token = str(uuid.uuid4())
-    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     
     db_token = RefreshToken(
         token=token,
@@ -117,7 +117,7 @@ async def refresh_token(
     db_token = db.query(RefreshToken).filter(
         RefreshToken.token == refresh_token,
         RefreshToken.is_revoked == False,
-        RefreshToken.expires_at > datetime.utcnow()
+        RefreshToken.expires_at > datetime.now(timezone.utc)
     ).first()
     
     if not db_token:
