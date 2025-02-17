@@ -101,14 +101,10 @@ class SyncMetadata(BaseModel):
         }
 
 class SyncRequest(BaseModel):
-    """Request body for portfolio sync"""
-    device_id: str = Field(..., description="Unique identifier for the device")
-    local_data: PortfolioData
-    base_version: int = Field(..., description="Last synced version number")
-    force: bool = Field(
-        default=False,
-        description="Force sync even if conflicts exist"
-    )
+    client_data: Dict[str, Any]
+    last_sync_at: Optional[datetime]
+    client_version: int = 1
+    force: bool = False
 
     class Config:
         json_encoders = {

@@ -7,6 +7,7 @@ from app.db.base import get_db
 from app.core.deps import check_subscription, check_portfolio_limit
 from app.api.v1.endpoints.auth import get_current_user
 from app.models import User, Portfolio, PortfolioVersion
+from app.models.enums import SubscriptionTier
 from app.schemas.portfolio import (
     PortfolioCreate, PortfolioUpdate, PortfolioResponse,
     PortfolioVersionResponse, PortfolioData
@@ -224,13 +225,19 @@ async def sync_portfolio(
     portfolio_id: int,
     sync_request: SyncRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    _: None = Depends(lambda: check_subscription("cloud_storage")),
+    db: Session = Depends(get_db)
 ) -> SyncResponse:
     """
     Sync a portfolio from mobile storage to cloud (Premium feature)
     Handles conflict resolution using three-way merge
     """
+    # Check subscription tier first
+    if current_user.subscription_tier != SubscriptionTier.PREMIUM:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This feature requires a premium subscription"
+        )
+
     portfolio = db.query(Portfolio).filter(
         Portfolio.id == portfolio_id,
         Portfolio.user_id == current_user.id
@@ -245,21 +252,23 @@ async def sync_portfolio(
     # Get the sync status first
     sync_status = sync_manager.get_sync_status(portfolio, sync_request)
     
-    # If there are conflicts, return them
-    if sync_status.has_conflicts:
+    # If there are conflicts and force is not set, return conflict status
+    if sync_status["has_conflicts"] and not sync_request.force:
         return SyncResponse(
             status="CONFLICT",
-            conflicts=sync_status.conflicts,
+            conflicts=sync_status["conflicts"],
             server_version=portfolio.version
         )
     
-    # No conflicts, safe to sync
+    # No conflicts or force sync, safe to update
     old_data = portfolio.data.copy()
     portfolio.data = sync_request.client_data
     portfolio.version += 1
     portfolio.is_cloud_synced = True
     portfolio.last_sync_at = datetime.now(timezone.utc)
     portfolio.updated_at = datetime.now(timezone.utc)
+    portfolio.had_conflicts = False
+    portfolio.pending_changes = 0
     
     # Update metrics
     total_value, asset_count = calculate_portfolio_metrics(portfolio.data)

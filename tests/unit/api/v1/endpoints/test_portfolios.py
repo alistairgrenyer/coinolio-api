@@ -200,15 +200,21 @@ class TestPortfolioEndpoints:
 
         sync_data = {
             "client_data": {
-                "assets": {"bitcoin": {"amount": "1.0"}},
-                "settings": {},
+                "assets": {
+                    "bitcoin": {
+                        "amount": "1.0",
+                        "cost_basis": "35000.00"
+                    }
+                },
+                "settings": {"default_currency": "USD"},
                 "metadata": {
                     "last_sync": datetime.now(timezone.utc).isoformat()
                 },
                 "schema_version": "1.0.0"
             },
             "last_sync_at": datetime.now(timezone.utc).isoformat(),
-            "client_version": 1
+            "client_version": 1,
+            "force": False
         }
 
         response = authorized_client.post(
