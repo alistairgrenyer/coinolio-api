@@ -97,7 +97,7 @@ class TestAuthEndpoints:
         # Then try to refresh the token
         response = client.post(
             f"{settings.API_V1_STR}/auth/refresh",
-            json={"refresh_token": refresh_token}
+            data={"refresh_token": refresh_token}  
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -108,7 +108,7 @@ class TestAuthEndpoints:
     def test_refresh_token_invalid(self, client):
         response = client.post(
             f"{settings.API_V1_STR}/auth/refresh",
-            json={"refresh_token": "invalid_token"}
+            data={"refresh_token": "invalid_token"}  
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert response.json()["detail"] == "Invalid refresh token"
+        assert response.json()["detail"] == "Invalid or expired refresh token"

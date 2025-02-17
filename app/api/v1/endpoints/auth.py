@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
@@ -110,7 +110,7 @@ async def login_for_access_token(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-    refresh_token: str,
+    refresh_token: str = Form(...),
     db: Session = Depends(get_db)
 ) -> Any:
     """Get new access token using refresh token"""
