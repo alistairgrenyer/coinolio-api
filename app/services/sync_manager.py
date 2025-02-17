@@ -45,29 +45,29 @@ class SyncManager:
                 if (DeepDiff(base_asset, local_asset) and 
                     DeepDiff(base_asset, remote_asset)):
                     # Use the most recently updated version
-                    local_time = datetime.fromisoformat(local_asset.get("last_modified", "1970-01-01T00:00:00"))
-                    remote_time = datetime.fromisoformat(remote_asset.get("last_modified", "1970-01-01T00:00:00"))
+                    local_time = datetime.fromisoformat(local_asset.get("last_modified", "1970-01-01T00:00:00+00:00"))
+                    remote_time = datetime.fromisoformat(remote_asset.get("last_modified", "1970-01-01T00:00:00+00:00"))
                     merged[asset_id] = local_asset if local_time > remote_time else remote_asset
                 else:
                     # Use the modified version
-                    merged[asset_id] = (
-                        local_asset if DeepDiff(base_asset, local_asset)
-                        else remote_asset
-                    )
+                    if DeepDiff(base_asset, local_asset):
+                        merged[asset_id] = local_asset
+                    else:
+                        merged[asset_id] = remote_asset
 
-            # Case 2: Asset added in local or remote
+            # Case 2: Asset added in one version
             elif base_asset is None:
-                # Keep additions from either side
+                # New asset - take whichever version exists
                 merged[asset_id] = local_asset or remote_asset
 
             # Case 3: Asset deleted in one version
             else:
-                # If modified in the other version, keep it
+                # Keep if modified in the other version
                 if local_asset and DeepDiff(base_asset, local_asset):
                     merged[asset_id] = local_asset
                 elif remote_asset and DeepDiff(base_asset, remote_asset):
                     merged[asset_id] = remote_asset
-                # Otherwise, honor the deletion by not including it
+                # Otherwise, consider it deleted
 
         return merged
 
@@ -79,8 +79,8 @@ class SyncManager:
         device_id: str
     ) -> Tuple[Dict[str, Any], bool]:
         """
-        Merge local and remote portfolio changes using three-way merge.
-        Returns (merged_portfolio, had_conflicts)
+        Perform three-way merge of portfolio data
+        Returns (merged_data, had_conflicts)
         """
         had_conflicts = False
         merged = {
@@ -89,17 +89,19 @@ class SyncManager:
                 local.get("assets", {}),
                 remote.get("assets", {})
             ),
-            "settings": remote.get("settings", {}),  # Server settings take precedence
-            "metadata": {
-                **local.get("metadata", {}),
-                **remote.get("metadata", {}),
-                "last_sync": self.generate_sync_metadata(device_id)
-            },
+            "settings": local.get("settings", {}),  # Use local settings
+            "metadata": self.generate_sync_metadata(device_id),
             "schema_version": self.SYNC_VERSION
         }
 
-        # Check if we had any conflicts during merge
-        if DeepDiff(local.get("assets", {}), merged["assets"]):
+        # Check for conflicts
+        if DeepDiff(
+            base.get("assets", {}),
+            local.get("assets", {})
+        ) and DeepDiff(
+            base.get("assets", {}),
+            remote.get("assets", {})
+        ):
             had_conflicts = True
 
         return merged, had_conflicts

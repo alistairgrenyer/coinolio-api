@@ -1,14 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from datetime import datetime, timedelta, UTC
 
 from app.main import app
-from app.db.base import Base, get_db
+from app.db.base_model import Base
+from app.db.base import get_db
 from app.core.config import get_settings
 from app.core.security import create_access_token
-from datetime import timedelta
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
