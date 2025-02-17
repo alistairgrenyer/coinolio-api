@@ -21,16 +21,24 @@ Coinolio API is a robust backend service designed to help users track and analyz
 ## 🛠️ Current Implementations
 
 ### Core Features
-- **Caching System**: Redis-based caching implementation for optimized performance
-- **Database Infrastructure**: Dual database setup (main and test) using PostgreSQL
-- **Containerization**: Docker Compose setup for easy development and deployment
-- **Environment Management**: Comprehensive environment variable management
-- **Payment Integration**: Stripe integration for premium features
+- **Authentication System**
+  - User registration and login
+  - JWT-based authentication
+  - Refresh token mechanism
+  - Role-based access control
+- **Caching System**: Redis-based caching implementation
+- **Database Infrastructure**: Dual database setup (main and test)
+- **Containerization**: Docker Compose setup
+- **Environment Management**: Comprehensive environment variables
+- **Payment Integration**: Stripe integration
 
-### Development Features
-- **Testing Framework**: Comprehensive testing setup with pytest
-- **Code Quality**: Coverage reporting and mock testing capabilities
-- **Development Tools**: VS Code integration
+### Testing Infrastructure
+- **Unit Testing**: Comprehensive test suite with pytest
+- **Test Database**: SQLite in-memory for fast testing
+- **Test Utilities**: Custom type handlers for PostgreSQL compatibility
+- **Factories**: Test data generation with Factory Boy
+- **Fixtures**: Reusable test components
+- **Coverage**: Test coverage reporting
 
 ## 🎯 Project Goals
 
@@ -46,8 +54,13 @@ Coinolio API is a robust backend service designed to help users track and analyz
 
 3. **Security**
    - JWT-based authentication
-   - Secure password handling with bcrypt
+   - Secure password handling
    - Environment variable protection
+
+4. **Testing**
+   - Comprehensive unit tests
+   - Integration testing
+   - Performance benchmarking
 
 ## 🔧 Setup and Installation
 
@@ -63,37 +76,68 @@ Coinolio API is a robust backend service designed to help users track and analyz
 The project includes a comprehensive test suite:
 
 ```bash
+# Run all tests
 pytest
+
+# Run specific test file
+pytest tests/unit/api/v1/endpoints/test_auth.py
+
+# Run with coverage
+pytest --cov=app tests/
+
+# Run with verbose output
+pytest -v
 ```
 
-For coverage reports:
-```bash
-pytest --cov
+### Test Structure
+```plaintext
+tests/
+├── conftest.py              # Shared fixtures
+├── factories/               # Test data factories
+├── unit/                    # Unit tests
+│   └── api/
+│       └── v1/
+│           └── endpoints/   # API endpoint tests
+└── utils/                   # Test utilities
 ```
 
 ## 📚 For LLMs
 
 ### Project Structure
 - `/app`: Main application directory
-  - `/services`: Service layer (cache, etc.)
-  - `/core`: Core functionality and configurations
-  
+  - `/api`: API endpoints and routers
+  - `/services`: Service layer
+  - `/core`: Core functionality
+  - `/models`: Database models and schemas
+
 ### Key Components
-1. **Cache Service**: Redis-based caching system for performance optimization
-2. **Database**: PostgreSQL with separate instances for testing and production
-3. **API Framework**: FastAPI for high-performance async API development
+1. **Authentication**
+   - JWT token-based auth
+   - Refresh token mechanism
+   - Role-based access
+
+2. **Database**
+   - PostgreSQL for production
+   - SQLite for testing
+   - SQLAlchemy ORM
+
+3. **Testing**
+   - Unit tests with pytest
+   - In-memory test database
+   - Factory-based test data
+   - Custom type handling
 
 ### Development Context
-- The project follows modern Python best practices
-- Uses type hints and async/await patterns
-- Implements comprehensive testing strategies
-- Follows a service-oriented architecture
+- Modern Python best practices
+- Type hints and async/await
+- Comprehensive testing
+- Service-oriented architecture
 
 ### Integration Points
 - Redis for caching
-- PostgreSQL for data persistence
-- Stripe for payment processing
-- Docker for containerization
+- PostgreSQL for data
+- Stripe for payments
+- Docker for containers
 
 ## 📄 License
 

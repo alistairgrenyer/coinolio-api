@@ -4,201 +4,192 @@
 
 This document outlines our testing strategy for the Coinolio API, focusing on unit testing FastAPI endpoints while maintaining clean, maintainable tests.
 
-## Testing Philosophy
+## Implementation Status
 
-1. **Unit Tests First**: Focus on testing business logic in isolation
-2. **Mock External Dependencies**: Avoid actual HTTP/DB calls during unit tests
-3. **Clean Test Structure**: Use fixtures and factories for test data
-4. **Coverage Focused**: Aim for high coverage of business logic
-5. **End-to-End Separate**: Keep E2E tests (Postman, etc.) separate from unit tests
+### Completed
+1. **Test Infrastructure**
+   - SQLite in-memory database setup
+   - Custom JSON type handling for SQLite compatibility
+   - Test fixtures and factories
+   - Database session management
+
+2. **Authentication Tests**
+   - User registration
+   - Login functionality
+   - Token refresh mechanism
+   - Current user retrieval
+   - Error handling scenarios
+
+### Pending
+1. **Additional Test Coverage**
+   - Portfolio management endpoints
+   - Subscription handling
+   - Rate limiting
+   - External API integration
 
 ## Test Structure
 
 ```plaintext
 tests/
-├── conftest.py              # Shared fixtures
+├── conftest.py              # Shared fixtures and DB setup
 ├── factories/               # Test data factories
-│   ├── user.py
-│   └── coin.py
-├── unit/                    # Unit tests
+│   └── user.py             # User factory implementation
+├── unit/                   # Unit tests
 │   ├── api/
 │   │   └── v1/
 │   │       └── endpoints/
-│   │           └── test_coins.py
-│   ├── services/
-│   │   └── test_coingecko.py
-│   └── core/
-│       └── test_deps.py
-└── utils/                   # Test utilities
-    └── mock_responses.py
+│   │           └── test_auth.py  # Authentication tests
+└── utils/                  # Test utilities
+    └── db.py              # SQLite compatibility layer
 ```
 
-## Testing Approach
+## Key Components
 
-### 1. FastAPI TestClient
+### 1. Database Strategy
+- Using SQLite for testing instead of PostgreSQL
+- Custom JSON type handling for PostgreSQL JSONB compatibility
+- In-memory database for fast test execution
+- Automatic schema creation for each test
 
-- Use FastAPI's `TestClient` for endpoint testing
-- No need for actual server - TestClient simulates HTTP requests
-- Example:
-  ```python
-  from fastapi.testclient import TestClient
-  from app.main import app
-
-  client = TestClient(app)
-  ```
-
-### 2. Mocking Strategy
-
-#### Dependencies to Mock:
-1. **Database Sessions**: Use SQLAlchemy's `create_engine` with SQLite
-2. **External Services**: Mock CoinGecko API responses
-3. **Redis Cache**: Mock cache operations
-4. **Authentication**: Mock user context
-5. **Rate Limiting**: Mock rate limit checks
-
-#### Example Mock Setup:
-```python
-@pytest.fixture
-def mock_coingecko():
-    with patch("app.services.coingecko.CoinGeckoService") as mock:
-        yield mock
-
-@pytest.fixture
-def mock_cache():
-    with patch("app.services.cache.RedisCache") as mock:
-        yield mock
-```
-
-### 3. Test Data Management
-
-Use FactoryBoy for test data generation:
+### 2. Test Data Management
 ```python
 class UserFactory(factory.Factory):
     class Meta:
         model = User
-
-    id = factory.Sequence(lambda n: n)
     email = factory.Faker('email')
-    subscription_tier = SubscriptionTier.FREE
+    hashed_password = factory.LazyFunction(lambda: get_password_hash("testpassword123"))
 ```
 
-### 4. Testing Endpoints
-
-Test Structure for Endpoints:
-1. Happy path
-2. Input validation
-3. Authentication/Authorization
-4. Rate limiting
-5. Caching behavior
-6. Error handling
-
-Example Test Cases:
+### 3. Fixtures
 ```python
-async def test_get_coin_prices_success(mock_coingecko, mock_cache):
-    # Arrange
-    mock_cache.get.return_value = None
-    mock_coingecko.get_coins_markets.return_value = {...}
-    
-    # Act
-    response = client.get("/api/v1/coins/prices?ids=bitcoin")
-    
-    # Assert
-    assert response.status_code == 200
-    assert response.json() == {...}
+@pytest.fixture
+def db_session(db_engine):
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 ```
 
-## Key Testing Decisions
+### 4. Authentication Test Cases
+1. **Registration**
+   - Successful registration
+   - Duplicate email handling
+2. **Login**
+   - Successful login
+   - Invalid credentials
+3. **Token Management**
+   - Access token validation
+   - Refresh token workflow
+   - Token expiration
 
-1. **No Real Database**
-   - Use SQLite in-memory for unit tests
-   - Faster execution
-   - No need for test database setup
+## Best Practices Implemented
 
-2. **No Real HTTP Calls**
-   - Mock external service responses
-   - Predictable test behavior
-   - Faster execution
+1. **Database Handling**
+   - Use transactions for test isolation
+   - Clean up after each test
+   - Use in-memory database for speed
 
-3. **No Real Redis**
-   - Mock cache operations
-   - Focus on caching logic, not Redis implementation
+2. **Test Organization**
+   - Group related tests in classes
+   - Clear test naming conventions
+   - Shared fixtures in conftest.py
 
-4. **Async Testing**
-   - Use `pytest-asyncio` for async endpoint testing
-   - Test both sync and async code paths
+3. **Data Management**
+   - Factory Boy for test data generation
+   - Faker for realistic test data
+   - Isolated test data per test
 
-## Test Coverage Strategy
+4. **Error Handling**
+   - Test both success and failure cases
+   - Validate error messages
+   - Check HTTP status codes
 
-1. **Unit Test Coverage Targets**
-   - Business Logic: 90%+
-   - API Endpoints: 85%+
-   - Utility Functions: 80%+
+## SQLite vs PostgreSQL Considerations
 
-2. **What to Test**
-   - Input validation
-   - Business logic
-   - Error handling
-   - Cache hit/miss scenarios
-   - Authorization rules
-   - Rate limiting logic
+### Handling PostgreSQL-Specific Types
+```python
+class SqliteJson(TypeDecorator):
+    """Enables JSON storage by encoding and decoding on the fly."""
+    impl = Text
+    cache_ok = True
 
-3. **What Not to Test**
-   - Framework internals
-   - Third-party libraries
-   - Configuration loading
-   - Actual HTTP/DB operations
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return json.dumps(value)
+        return None
+```
 
-## Action Plan
+### Production vs Test Environment
+- Production: PostgreSQL with JSONB support
+- Testing: SQLite with JSON string storage
+- Automatic type selection based on environment
 
-1. **Setup Phase**
-   - [ ] Configure pytest with necessary plugins
-   - [ ] Set up test directory structure
-   - [ ] Create base fixtures in conftest.py
-   - [ ] Set up mock factories
+## Test Execution
 
-2. **Implementation Phase**
-   - [ ] Create mock utilities
-   - [ ] Implement database fixtures
-   - [ ] Create service mocks
-   - [ ] Write first endpoint tests
+Running specific test files:
+```bash
+pytest tests/unit/api/v1/endpoints/test_auth.py -v
+```
 
-3. **Coverage Phase**
-   - [ ] Set up coverage reporting
-   - [ ] Identify coverage gaps
-   - [ ] Add missing test cases
-
-4. **Maintenance Phase**
-   - [ ] Document testing patterns
-   - [ ] Create test templates
-   - [ ] Set up CI test automation
-
-## Best Practices
-
-1. **Test Isolation**
-   - Each test should be independent
-   - Use fresh fixtures for each test
-   - Clean up any test data
-
-2. **Naming Conventions**
-   - test_[feature]_[scenario]_[expected_result]
-   - Example: `test_get_coin_prices_cache_hit_returns_cached_data`
-
-3. **Assertion Best Practices**
-   - One logical assertion per test
-   - Use descriptive assertion messages
-   - Test both positive and negative cases
-
-4. **Mock Usage**
-   - Mock at the lowest possible level
-   - Use spec=True for type checking
-   - Reset mocks between tests
+Running with coverage:
+```bash
+pytest --cov=app tests/
+```
 
 ## Next Steps
 
-1. Begin with setting up the test environment and dependencies
-2. Create basic fixtures and mock utilities
-3. Start with simple endpoint tests
-4. Gradually expand test coverage
-5. Implement CI/CD integration
+1. **Expand Test Coverage**
+   - Implement portfolio endpoint tests
+   - Add subscription test cases
+   - Test rate limiting functionality
 
-Remember: The goal is to have reliable, maintainable tests that give us confidence in our code without being overly complex or brittle.
+2. **Performance Testing**
+   - Add load test scenarios
+   - Benchmark critical endpoints
+   - Test caching effectiveness
+
+3. **Integration Testing**
+   - External API mocking
+   - Database performance
+   - Cache integration
+
+4. **CI/CD Integration**
+   - Add GitHub Actions workflow
+   - Automated test execution
+   - Coverage reporting
+
+## Lessons Learned
+
+1. **SQLite for Testing**
+   - Pros: Fast, in-memory, no setup required
+   - Cons: Limited PostgreSQL feature support
+   - Solution: Custom type decorators
+
+2. **Form Data vs JSON**
+   - FastAPI form handling specifics
+   - Token refresh requirements
+   - Request content-type importance
+
+3. **Test Organization**
+   - Importance of clear structure
+   - Fixture reusability
+   - Test isolation
+
+## Maintenance Guidelines
+
+1. **Adding New Tests**
+   - Follow existing patterns
+   - Use appropriate fixtures
+   - Include both success and failure cases
+
+2. **Database Considerations**
+   - Use transactions for isolation
+   - Clean up test data
+   - Handle PostgreSQL-specific features
+
+3. **Code Quality**
+   - Maintain test documentation
+   - Use descriptive test names
+   - Keep tests focused and atomic
