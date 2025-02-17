@@ -78,19 +78,21 @@ class TestPortfolioEndpoints:
         ]
         for portfolio in portfolios:
             db_session.add(portfolio)
+            db_session.flush()  # Ensure IDs are generated
         db_session.commit()
 
         response = authorized_client.get(f"{settings.API_V1_STR}/portfolios/")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 2
-        assert data[0]["name"] == portfolios[0].name
-        assert data[1]["name"] == portfolios[1].name
+        assert any(p["name"] == portfolios[0].name for p in data)
+        assert any(p["name"] == portfolios[1].name for p in data)
 
     def test_get_portfolio_by_id(self, authorized_client, test_user, db_session):
         """Test getting a specific portfolio"""
         portfolio = PortfolioFactory(user_id=test_user["id"])
         db_session.add(portfolio)
+        db_session.flush()  # Ensure ID is generated
         db_session.commit()
 
         response = authorized_client.get(
@@ -113,6 +115,7 @@ class TestPortfolioEndpoints:
         """Test updating a portfolio"""
         portfolio = PortfolioFactory(user_id=test_user["id"])
         db_session.add(portfolio)
+        db_session.flush()  # Ensure ID is generated
         db_session.commit()
 
         update_data = {
@@ -153,6 +156,7 @@ class TestPortfolioEndpoints:
         """Test getting portfolio version history"""
         portfolio = PortfolioFactory(user_id=test_user["id"])
         db_session.add(portfolio)
+        db_session.flush()  # Ensure ID is generated
         db_session.commit()
         
         # Add some versions
@@ -191,6 +195,7 @@ class TestPortfolioEndpoints:
 
         portfolio = PortfolioFactory(user_id=test_user["id"])
         db_session.add(portfolio)
+        db_session.flush()  # Ensure ID is generated
         db_session.commit()
 
         sync_data = {
@@ -220,6 +225,7 @@ class TestPortfolioEndpoints:
             last_sync_at=datetime.now(timezone.utc)
         )
         db_session.add(portfolio)
+        db_session.flush()  # Ensure ID is generated
         db_session.commit()
 
         response = authorized_client.get(

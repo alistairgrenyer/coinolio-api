@@ -111,13 +111,14 @@ async def get_portfolios(
     limit_versions: int = Query(5, description="Number of versions to include")
 ) -> List[Portfolio]:
     """Get all portfolios for the current user"""
-    if include_versions:
-        return current_user.portfolios
-    return [
-        Portfolio(
-            **{k: v for k, v in p.__dict__.items() if k != 'versions'}
-        ) for p in current_user.portfolios
-    ]
+    portfolios = current_user.portfolios
+    if not include_versions:
+        for portfolio in portfolios:
+            portfolio.versions = []
+    elif limit_versions:
+        for portfolio in portfolios:
+            portfolio.versions = portfolio.versions[:limit_versions]
+    return portfolios
 
 @router.get("/{portfolio_id}", response_model=PortfolioResponse)
 async def get_portfolio(
