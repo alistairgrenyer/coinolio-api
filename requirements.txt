@@ -1,4 +1,5 @@
 fastapi==0.104.1
+fastapi-cli==0.0.5
 uvicorn==0.24.0
 python-dotenv==1.0.0
 redis==5.0.1
