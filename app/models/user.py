@@ -1,4 +1,4 @@
-from datetime import datetime, timezone as tz
+from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
@@ -16,7 +16,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(tz.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     
     # Role and subscription
     role = Column(SQLEnum(UserRole), default=UserRole.USER)
@@ -36,7 +36,7 @@ class RefreshToken(Base):
     token = Column(String, unique=True, index=True)
     expires_at = Column(DateTime(timezone=True))
     is_revoked = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(tz.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id"))
     
     user = relationship("User", back_populates="refresh_tokens")
@@ -45,7 +45,12 @@ class RefreshToken(Base):
 class UserBase(BaseModel):
     email: EmailStr
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda dt: dt.isoformat()
+        }
+    )
 
 class UserCreate(UserBase):
     password: str
@@ -61,18 +66,33 @@ class UserResponse(UserBase):
     stripe_subscription_id: Optional[str] = None
     portfolios: List[PortfolioResponse] = []
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda dt: dt.isoformat()
+        }
+    )
 
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda dt: dt.isoformat()
+        }
+    )
 
 class TokenData(BaseModel):
     email: Optional[str] = None
     role: Optional[UserRole] = None
     subscription_tier: Optional[SubscriptionTier] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda dt: dt.isoformat()
+        }
+    )

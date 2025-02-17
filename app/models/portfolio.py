@@ -1,4 +1,4 @@
-from datetime import datetime, timezone as UTC
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Float, DateTime, Index
 from sqlalchemy.orm import relationship
 
@@ -22,8 +22,8 @@ class Portfolio(Base):
     total_value_usd = Column(Float, nullable=False, default=0)
     asset_count = Column(Integer, nullable=False, default=0)
     is_cloud_synced = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_sync_at = Column(DateTime(timezone=True), nullable=True)
     last_sync_device = Column(String, nullable=True)
     had_conflicts = Column(Boolean, nullable=False, default=False)
@@ -47,7 +47,7 @@ class PortfolioVersion(Base):
     total_value_usd = Column(Float, nullable=False, default=0)
     asset_count = Column(Integer, nullable=False, default=0)
     change_summary = Column(JSON_TYPE, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     portfolio = relationship("Portfolio", back_populates="versions")
 

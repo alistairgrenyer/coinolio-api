@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 from app.db.base import get_db
 from app.core.deps import check_subscription, check_portfolio_limit
@@ -67,7 +67,8 @@ def create_portfolio_version(
         data=portfolio.data,
         total_value_usd=total_value,
         asset_count=asset_count,
-        change_summary=change_summary
+        change_summary=change_summary,
+        created_at=datetime.now(timezone.utc)
     )
     db.add(version)
     return version
@@ -90,8 +91,8 @@ async def create_portfolio(
         user_id=current_user.id,
         total_value_usd=total_value,
         asset_count=asset_count,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC)
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     db.add(portfolio)
     db.commit()
@@ -180,7 +181,7 @@ async def update_portfolio(
     
     # Increment version and update timestamp
     portfolio.version += 1
-    portfolio.updated_at = datetime.now(UTC)
+    portfolio.updated_at = datetime.now(timezone.utc)
     
     # Create new version
     create_portfolio_version(db, portfolio, old_data)
@@ -256,8 +257,8 @@ async def sync_portfolio(
     portfolio.data = sync_request.client_data
     portfolio.version += 1
     portfolio.is_cloud_synced = True
-    portfolio.last_sync_at = datetime.now(UTC)
-    portfolio.updated_at = datetime.now(UTC)
+    portfolio.last_sync_at = datetime.now(timezone.utc)
+    portfolio.updated_at = datetime.now(timezone.utc)
     
     # Update metrics
     total_value, asset_count = calculate_portfolio_metrics(portfolio.data)

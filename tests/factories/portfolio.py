@@ -1,5 +1,5 @@
 import factory
-from datetime import datetime, timezone as tz
+from datetime import datetime, timezone
 import random
 from app.models.portfolio import Portfolio, PortfolioVersion
 
@@ -11,8 +11,8 @@ class PortfolioFactory(factory.Factory):
     name = factory.Faker('company')
     description = factory.Faker('catch_phrase')
     is_cloud_synced = False
-    created_at = factory.LazyFunction(lambda: datetime.now(tz.utc))
-    updated_at = factory.LazyFunction(lambda: datetime.now(tz.utc))
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     version = 1
     total_value_usd = factory.LazyFunction(lambda: 75000.0)  # 1.5 BTC * 35000 + 10 ETH * 2500
     asset_count = 2
@@ -40,7 +40,7 @@ class PortfolioFactory(factory.Factory):
         },
         "metadata": {
             "created_from": "web",
-            "last_modified": datetime.now(tz.utc).isoformat()
+            "last_modified": datetime.now(timezone.utc).isoformat()
         },
         "schema_version": "1.0.0"
     })
@@ -56,7 +56,7 @@ class PortfolioFactory(factory.Factory):
     def setup_sync_fields(obj, create, extracted, **kwargs):
         """Set up sync-related fields if is_cloud_synced is True"""
         if obj.is_cloud_synced:
-            obj.last_sync_at = obj.last_sync_at or datetime.now(tz.utc)
+            obj.last_sync_at = obj.last_sync_at or datetime.now(timezone.utc)
             obj.last_sync_device = obj.last_sync_device or "test_device"
             obj.had_conflicts = obj.had_conflicts or False
             obj.pending_changes = obj.pending_changes or 0
@@ -70,7 +70,7 @@ class PortfolioVersionFactory(factory.Factory):
     portfolio_id = None  # This should be set when creating instances
     total_value_usd = factory.LazyFunction(lambda: 52500.0)  # 1.5 BTC * 35000
     asset_count = 1
-    created_at = factory.LazyFunction(lambda: datetime.now(tz.utc))
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     data = factory.LazyFunction(lambda: {
         "assets": {
             "bitcoin": {
@@ -80,7 +80,7 @@ class PortfolioVersionFactory(factory.Factory):
         },
         "settings": {"default_currency": "USD"},
         "metadata": {
-            "last_modified": datetime.now(tz.utc).isoformat()
+            "last_modified": datetime.now(timezone.utc).isoformat()
         },
         "schema_version": "1.0.0"
     })
