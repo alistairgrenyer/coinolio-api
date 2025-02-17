@@ -75,7 +75,6 @@ class ChangeType(str, Enum):
     SETTINGS_CHANGED = "settings_changed"
 
 class SyncChange(BaseModel):
-    """Represents a change during sync"""
     type: ChangeType
     asset_id: Optional[str] = None
     old_value: Optional[Dict[str, Any]] = None
@@ -88,11 +87,10 @@ class SyncChange(BaseModel):
         }
 
 class SyncMetadata(BaseModel):
-    """Metadata about a sync operation"""
-    device_id: str
-    had_conflicts: bool
-    base_version: int
-    changes: List[SyncChange]
+    device_id: str = Field(default="unknown")  # Default to "unknown" if not provided
+    had_conflicts: bool = False
+    base_version: Optional[int] = None
+    changes: List[SyncChange] = []
     sync_timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
@@ -105,6 +103,7 @@ class SyncRequest(BaseModel):
     last_sync_at: Optional[datetime]
     client_version: int = 1
     force: bool = False
+    device_id: str = Field(default="unknown")  # Add device_id to request
 
     class Config:
         json_encoders = {
@@ -113,11 +112,13 @@ class SyncRequest(BaseModel):
 
 class SyncResponse(BaseModel):
     """Response body for portfolio sync"""
-    version: int
-    data: PortfolioData
-    sync_metadata: SyncMetadata
-    is_cloud_synced: bool
-    last_sync_at: datetime
+    status: str
+    server_version: int
+    server_data: Optional[Dict[str, Any]] = None
+    conflicts: Optional[Dict[str, Any]] = None
+    sync_metadata: Optional[SyncMetadata] = None
+    is_cloud_synced: bool = False
+    last_sync_at: Optional[datetime] = None
 
     class Config:
         json_encoders = {

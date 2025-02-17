@@ -256,8 +256,17 @@ async def sync_portfolio(
     if sync_status["has_conflicts"] and not sync_request.force:
         return SyncResponse(
             status="CONFLICT",
+            server_version=portfolio.version,
+            server_data=portfolio.data,
             conflicts=sync_status["conflicts"],
-            server_version=portfolio.version
+            sync_metadata=SyncMetadata(
+                device_id=sync_request.device_id,
+                had_conflicts=True,
+                base_version=portfolio.version,
+                changes=[]
+            ),
+            is_cloud_synced=portfolio.is_cloud_synced,
+            last_sync_at=portfolio.last_sync_at
         )
     
     # No conflicts or force sync, safe to update
@@ -269,6 +278,7 @@ async def sync_portfolio(
     portfolio.updated_at = datetime.now(timezone.utc)
     portfolio.had_conflicts = False
     portfolio.pending_changes = 0
+    portfolio.last_sync_device = sync_request.device_id
     
     # Update metrics
     total_value, asset_count = calculate_portfolio_metrics(portfolio.data)
@@ -276,7 +286,7 @@ async def sync_portfolio(
     portfolio.asset_count = asset_count
     
     # Create new version
-    create_portfolio_version(db, portfolio, old_data)
+    version = create_portfolio_version(db, portfolio, old_data)
     
     db.commit()
     db.refresh(portfolio)
@@ -284,7 +294,15 @@ async def sync_portfolio(
     return SyncResponse(
         status="SUCCESS",
         server_version=portfolio.version,
-        server_data=portfolio.data
+        server_data=portfolio.data,
+        sync_metadata=SyncMetadata(
+            device_id=sync_request.device_id,
+            had_conflicts=False,
+            base_version=portfolio.version,
+            changes=[]
+        ),
+        is_cloud_synced=portfolio.is_cloud_synced,
+        last_sync_at=portfolio.last_sync_at
     )
 
 @router.get("/{portfolio_id}/sync/status", response_model=SyncStatusResponse)

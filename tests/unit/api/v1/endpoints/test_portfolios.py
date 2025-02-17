@@ -214,7 +214,8 @@ class TestPortfolioEndpoints:
             },
             "last_sync_at": datetime.now(timezone.utc).isoformat(),
             "client_version": 1,
-            "force": False
+            "force": False,
+            "device_id": "test_device"
         }
 
         response = authorized_client.post(
