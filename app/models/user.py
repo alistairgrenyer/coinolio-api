@@ -3,10 +3,15 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, validator
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON, Enum as SQLEnum, Index
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import JSONB
 
 from app.db.base import Base
 from app.models.enums import UserRole, SubscriptionTier
+from app.core.config import get_settings
+from tests.utils.db import get_json_type
+
+settings = get_settings()
+is_sqlite = settings.SQLALCHEMY_DATABASE_URI.startswith('sqlite')
+JSON_TYPE = get_json_type(is_sqlite)
 
 # SQLAlchemy Models
 class User(Base):
@@ -40,8 +45,8 @@ class Portfolio(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     version = Column(Integer, default=1)
     
-    # Store the portfolio data as a JSONB blob for flexibility and querying
-    data = Column(JSONB, nullable=False)
+    # Store the portfolio data as JSON
+    data = Column(JSON_TYPE, nullable=False)
     
     # Metadata for analytics
     total_value_usd = Column(Integer)  # Stored in cents for precision
@@ -53,7 +58,7 @@ class Portfolio(Base):
     
     # Relationships
     user = relationship("User", back_populates="portfolios")
-    versions = relationship("PortfolioVersion", back_populates="portfolio", order_by="desc(PortfolioVersion.version)")
+    versions = relationship("PortfolioVersion", back_populates="portfolio", cascade="all, delete-orphan")
 
     # Indexes for common queries
     __table_args__ = (
@@ -66,21 +71,15 @@ class PortfolioVersion(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     version = Column(Integer, nullable=False)
-    data = Column(JSONB, nullable=False)
+    data = Column(JSON_TYPE, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Analytics metadata
-    total_value_usd = Column(Integer)  # Stored in cents for precision
+    total_value_usd = Column(Integer)
     asset_count = Column(Integer)
-    change_summary = Column(JSONB)  # Store what changed in this version
-    
-    # Foreign keys
+    change_summary = Column(JSON_TYPE)
     portfolio_id = Column(Integer, ForeignKey("portfolios.id"))
     
-    # Relationships
     portfolio = relationship("Portfolio", back_populates="versions")
-
-    # Ensure unique versions per portfolio
+    
     __table_args__ = (
         Index('ix_portfolio_versions_portfolio_id_version', 'portfolio_id', 'version', unique=True),
     )
@@ -91,10 +90,11 @@ class RefreshToken(Base):
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String, unique=True, index=True)
     expires_at = Column(DateTime)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    user = relationship("User", back_populates="refresh_tokens")
-    created_at = Column(DateTime, default=datetime.utcnow)
     is_revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    
+    user = relationship("User", back_populates="refresh_tokens")
 
 # Pydantic Models
 class PortfolioData(BaseModel):
