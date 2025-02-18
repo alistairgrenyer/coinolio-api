@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 from enum import Enum
 
 class AssetTransaction(BaseModel):
@@ -10,6 +10,11 @@ class AssetTransaction(BaseModel):
     price_usd: str = Field(..., description="String for precise decimal handling")
     notes: Optional[str] = None
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
+
 class AssetDetails(BaseModel):
     amount: str = Field(..., description="String for precise decimal handling")
     cost_basis: str = Field(..., description="Average cost basis in USD")
@@ -17,6 +22,11 @@ class AssetDetails(BaseModel):
     last_modified: datetime = Field(default_factory=datetime.utcnow)
     transactions: List[AssetTransaction] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
 
 class PortfolioSettings(BaseModel):
     preferred_currency: str = "usd"
@@ -29,6 +39,11 @@ class PortfolioMetadata(BaseModel):
     app_version: str
     platform: str = Field(..., description="ios, android, web")
     last_price_update: Optional[datetime] = None
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
 
 class PortfolioData(BaseModel):
     """Complete portfolio data structure"""
@@ -48,15 +63,10 @@ class PortfolioData(BaseModel):
                 raise ValueError(f"Asset {asset_id} must be an AssetDetails object")
         return v
 
-class SyncRequest(BaseModel):
-    """Request body for portfolio sync"""
-    device_id: str = Field(..., description="Unique identifier for the device")
-    local_data: PortfolioData
-    base_version: int = Field(..., description="Last synced version number")
-    force: bool = Field(
-        default=False,
-        description="Force sync even if conflicts exist"
-    )
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
 
 class ChangeType(str, Enum):
     ADDED = "added"
@@ -65,37 +75,69 @@ class ChangeType(str, Enum):
     SETTINGS_CHANGED = "settings_changed"
 
 class SyncChange(BaseModel):
-    """Represents a change during sync"""
     type: ChangeType
     asset_id: Optional[str] = None
     old_value: Optional[Dict[str, Any]] = None
     new_value: Optional[Dict[str, Any]] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
+
 class SyncMetadata(BaseModel):
-    """Metadata about a sync operation"""
-    device_id: str
-    had_conflicts: bool
-    base_version: int
-    changes: List[SyncChange]
+    device_id: str = Field(default="unknown")  # Default to "unknown" if not provided
+    had_conflicts: bool = False
+    base_version: Optional[int] = None
+    changes: List[SyncChange] = []
     sync_timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
+
+class SyncRequest(BaseModel):
+    client_data: Dict[str, Any]
+    last_sync_at: Optional[datetime]
+    client_version: int = 1
+    force: bool = False
+    device_id: str = Field(default="unknown")  # Add device_id to request
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
 
 class SyncResponse(BaseModel):
     """Response body for portfolio sync"""
-    version: int
-    data: PortfolioData
-    sync_metadata: SyncMetadata
-    is_cloud_synced: bool
-    last_sync_at: datetime
+    status: str
+    server_version: int
+    server_data: Optional[Dict[str, Any]] = None
+    conflicts: Optional[Dict[str, Any]] = None
+    sync_metadata: Optional[SyncMetadata] = None
+    is_cloud_synced: bool = False
+    last_sync_at: Optional[datetime] = None
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
 
 class SyncStatusResponse(BaseModel):
     """Response body for sync status check"""
     is_synced: bool
-    last_sync: Optional[datetime]
-    current_version: int
-    last_sync_device: Optional[str]
-    had_conflicts: bool
-    pending_changes: Optional[List[SyncChange]]
+    last_sync_at: Optional[datetime]
+    server_version: int
+    last_sync_device: Optional[str] = None
+    had_conflicts: bool = False
+    pending_changes: int = 0
+
+    class Config:
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
 
 class SyncConflict(BaseModel):
     """Represents a sync conflict that needs resolution"""

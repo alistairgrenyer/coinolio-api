@@ -1,7 +1,9 @@
 from typing import Dict, Any, Tuple, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from deepdiff import DeepDiff
+
+from app.schemas.portfolio_sync import SyncRequest
 
 class SyncManager:
     def __init__(self):
@@ -14,6 +16,95 @@ class SyncManager:
             "device_id": device_id,
             "timestamp": datetime.utcnow().isoformat(),
         }
+
+    def get_sync_status(self, portfolio: Any, sync_request: SyncRequest) -> Dict[str, Any]:
+        """Get sync status and detect conflicts"""
+        if not portfolio.is_cloud_synced:
+            return {
+                "has_conflicts": False,
+                "conflicts": None
+            }
+
+        # Check for version mismatch
+        if sync_request.client_version != portfolio.version:
+            return {
+                "has_conflicts": True,
+                "conflicts": {
+                    "type": "VERSION_MISMATCH",
+                    "client_version": sync_request.client_version,
+                    "server_version": portfolio.version
+                }
+            }
+
+        # Check for data conflicts
+        if sync_request.client_data != portfolio.data:
+            # Compare timestamps to see which is newer
+            client_time = sync_request.last_sync_at or datetime.fromtimestamp(0, tz=timezone.utc)
+            server_time = portfolio.last_sync_at or datetime.fromtimestamp(0, tz=timezone.utc)
+
+            # If client data is older, no conflict (client should update)
+            if client_time < server_time:
+                return {
+                    "has_conflicts": False,
+                    "conflicts": None
+                }
+
+            # If server data is older, no conflict (server should update)
+            if server_time < client_time:
+                return {
+                    "has_conflicts": False,
+                    "conflicts": None
+                }
+
+            # If timestamps are equal, we have a real conflict
+            return {
+                "has_conflicts": True,
+                "conflicts": {
+                    "type": "DATA_CONFLICT",
+                    "client_data": sync_request.client_data,
+                    "server_data": portfolio.data
+                }
+            }
+
+        return {
+            "has_conflicts": False,
+            "conflicts": None
+        }
+
+    def merge_portfolios(
+        self,
+        base: Dict[str, Any],
+        local: Dict[str, Any],
+        remote: Dict[str, Any],
+        device_id: str
+    ) -> Tuple[Dict[str, Any], bool]:
+        """
+        Perform three-way merge of portfolio data
+        Returns (merged_data, had_conflicts)
+        """
+        had_conflicts = False
+        merged = {
+            "assets": self._merge_assets(
+                base.get("assets", {}),
+                local.get("assets", {}),
+                remote.get("assets", {})
+            ),
+            "settings": local.get("settings", {}),  # Use local settings
+            "metadata": self.generate_sync_metadata(device_id),
+            "schema_version": self.SYNC_VERSION
+        }
+
+        # Check for conflicts
+        if DeepDiff(
+            base.get("assets", {}),
+            local.get("assets", {})
+        ) and DeepDiff(
+            base.get("assets", {}),
+            remote.get("assets", {})
+        ):
+            had_conflicts = True
+
+        return merged, had_conflicts
 
     def _merge_assets(
         self,
@@ -45,64 +136,31 @@ class SyncManager:
                 if (DeepDiff(base_asset, local_asset) and 
                     DeepDiff(base_asset, remote_asset)):
                     # Use the most recently updated version
-                    local_time = datetime.fromisoformat(local_asset.get("last_modified", "1970-01-01T00:00:00"))
-                    remote_time = datetime.fromisoformat(remote_asset.get("last_modified", "1970-01-01T00:00:00"))
+                    local_time = datetime.fromisoformat(local_asset.get("last_modified", "1970-01-01T00:00:00+00:00"))
+                    remote_time = datetime.fromisoformat(remote_asset.get("last_modified", "1970-01-01T00:00:00+00:00"))
                     merged[asset_id] = local_asset if local_time > remote_time else remote_asset
                 else:
                     # Use the modified version
-                    merged[asset_id] = (
-                        local_asset if DeepDiff(base_asset, local_asset)
-                        else remote_asset
-                    )
+                    if DeepDiff(base_asset, local_asset):
+                        merged[asset_id] = local_asset
+                    else:
+                        merged[asset_id] = remote_asset
 
-            # Case 2: Asset added in local or remote
+            # Case 2: Asset added in one version
             elif base_asset is None:
-                # Keep additions from either side
+                # New asset - take whichever version exists
                 merged[asset_id] = local_asset or remote_asset
 
             # Case 3: Asset deleted in one version
             else:
-                # If modified in the other version, keep it
+                # Keep if modified in the other version
                 if local_asset and DeepDiff(base_asset, local_asset):
                     merged[asset_id] = local_asset
                 elif remote_asset and DeepDiff(base_asset, remote_asset):
                     merged[asset_id] = remote_asset
-                # Otherwise, honor the deletion by not including it
+                # Otherwise, consider it deleted
 
         return merged
-
-    def merge_portfolios(
-        self,
-        base: Dict[str, Any],
-        local: Dict[str, Any],
-        remote: Dict[str, Any],
-        device_id: str
-    ) -> Tuple[Dict[str, Any], bool]:
-        """
-        Merge local and remote portfolio changes using three-way merge.
-        Returns (merged_portfolio, had_conflicts)
-        """
-        had_conflicts = False
-        merged = {
-            "assets": self._merge_assets(
-                base.get("assets", {}),
-                local.get("assets", {}),
-                remote.get("assets", {})
-            ),
-            "settings": remote.get("settings", {}),  # Server settings take precedence
-            "metadata": {
-                **local.get("metadata", {}),
-                **remote.get("metadata", {}),
-                "last_sync": self.generate_sync_metadata(device_id)
-            },
-            "schema_version": self.SYNC_VERSION
-        }
-
-        # Check if we had any conflicts during merge
-        if DeepDiff(local.get("assets", {}), merged["assets"]):
-            had_conflicts = True
-
-        return merged, had_conflicts
 
     def detect_changes(
         self,

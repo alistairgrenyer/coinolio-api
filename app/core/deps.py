@@ -1,13 +1,13 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi.security import OAuth2PasswordBearer
 
 from app.db.base import get_db
 from app.api.v1.endpoints.auth import get_current_user
 from app.models.user import User
-from app.models.enums import UserRole, SubscriptionTier, TIER_LIMITS
+from app.models.enums import UserRole, SubscriptionTier
 from app.core.rate_limit import rate_limiter
 
 # Make token optional by setting auto_error=False
@@ -39,39 +39,33 @@ def check_admin(current_user: User = Depends(get_current_user)) -> User:
         )
     return current_user
 
-def check_subscription(
+async def check_subscription(
     feature: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ) -> None:
-    """Check if user has access to a specific feature based on their subscription"""
-    
-    # Check if subscription has expired
-    if (current_user.subscription_tier == SubscriptionTier.PREMIUM and 
-        current_user.subscription_expires_at and 
-        current_user.subscription_expires_at < datetime.utcnow()):
-        # Downgrade to free tier if premium subscription expired
-        current_user.subscription_tier = SubscriptionTier.FREE
-        db.commit()
-    
-    tier_limits = TIER_LIMITS[current_user.subscription_tier]
-    
-    if not tier_limits.get(feature, False):
+    """Check if user has access to a premium feature"""
+    if current_user.subscription_tier != SubscriptionTier.PREMIUM:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"This feature requires a premium subscription"
         )
+    
+    if current_user.subscription_expires_at and current_user.subscription_expires_at < datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Your subscription has expired"
+        )
 
-def check_portfolio_limit(
+async def check_portfolio_limit(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> None:
     """Check if user has reached their portfolio limit"""
-    tier_limits = TIER_LIMITS[current_user.subscription_tier]
-    current_portfolios = len(current_user.portfolios)
+    portfolio_count = len(current_user.portfolios)
+    max_portfolios = 10 if current_user.subscription_tier == SubscriptionTier.PREMIUM else 3
     
-    if current_portfolios >= tier_limits["max_portfolios"]:
+    if portfolio_count >= max_portfolios:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You have reached your portfolio limit. Upgrade to premium for unlimited portfolios."
+            detail=f"You have reached your limit of {max_portfolios} portfolios"
         )

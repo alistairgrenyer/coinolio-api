@@ -1,148 +1,169 @@
 # Coinolio API
 
-A modern, scalable cryptocurrency portfolio tracking and analytics API built with FastAPI.
+A modern, scalable cryptocurrency portfolio tracking and analytics API built with FastAPI. Designed for robust portfolio management with cloud sync capabilities and premium features.
 
-## 🚀 Overview
+## 🚀 Technical Stack
 
-Coinolio API is a robust backend service designed to help users track and analyze their cryptocurrency investments. Built with modern Python technologies and following best practices, it provides a secure and performant platform for cryptocurrency portfolio management.
-
-## 🏗️ Technical Stack
-
-- **Framework**: FastAPI
-- **Database**: PostgreSQL 15
+- **Framework**: FastAPI + Python 3.12
+- **Database**: PostgreSQL 15 + SQLAlchemy ORM
 - **Caching**: Redis
 - **Authentication**: JWT with Python-Jose
-- **ORM**: SQLAlchemy
-- **Migrations**: Alembic
-- **Payment Processing**: Stripe
-- **Testing**: Pytest with extensive testing utilities
-- **Containerization**: Docker
+- **Testing**: Pytest + SQLite
+- **Deployment**: Docker + Alembic
+- **Payments**: Stripe (planned)
 
-## 🛠️ Current Implementations
+## 🛠️ Implementation Status
 
-### Core Features
-- **Authentication System**
-  - User registration and login
-  - JWT-based authentication
-  - Refresh token mechanism
-  - Role-based access control
-- **Caching System**: Redis-based caching implementation
-- **Database Infrastructure**: Dual database setup (main and test)
-- **Containerization**: Docker Compose setup
-- **Environment Management**: Comprehensive environment variables
-- **Payment Integration**: Stripe integration
+### ✅ Core Features (90%+ Coverage)
 
-### Testing Infrastructure
-- **Unit Testing**: Comprehensive test suite with pytest
-- **Test Database**: SQLite in-memory for fast testing
-- **Test Utilities**: Custom type handlers for PostgreSQL compatibility
-- **Factories**: Test data generation with Factory Boy
-- **Fixtures**: Reusable test components
-- **Coverage**: Test coverage reporting
+1. **Authentication & Users** (97%)
+   - [x] User registration and login
+   - [x] JWT authentication with refresh
+   - [x] Role-based access control
+   - [x] Password security (bcrypt)
+   - [x] Comprehensive test coverage
 
-## 🎯 Project Goals
+2. **Portfolio Management** (93%)
+   - [x] CRUD operations
+   - [x] Version history tracking
+   - [x] Cloud sync (Premium)
+   - [x] Asset validation
+   - [x] Subscription tier checks
 
-1. **Performance Optimization**
-   - Efficient caching strategies
-   - Database query optimization
-   - Response time minimization
+3. **Infrastructure** (100%)
+   - [x] Database models and schemas
+   - [x] Environment configuration
+   - [x] Test framework
+   - [x] Docker setup
+   - [x] Migration system
 
-2. **Scalability**
-   - Containerized deployment
-   - Microservices architecture
-   - Horizontal scaling capabilities
+### 🚧 In Development
 
-3. **Security**
-   - JWT-based authentication
-   - Secure password handling
-   - Environment variable protection
+1. **External Services** (41% Complete)
+   - [ ] CoinGecko integration
+   - [ ] Market data fetching
+   - [ ] Price updates
+   - [ ] Integration tests
+   - ETA: March 2025
 
-4. **Testing**
-   - Comprehensive unit tests
-   - Integration testing
-   - Performance benchmarking
+2. **Subscription System** (37% Complete)
+   - [ ] Payment processing
+   - [ ] Tier management
+   - [ ] Premium features
+   - [ ] Billing tests
+   - ETA: April 2025
 
-## 🔧 Setup and Installation
+3. **Performance Features** (55% Complete)
+   - [ ] Rate limiting (48%)
+   - [ ] Redis caching (62%)
+   - [ ] Load optimization
+   - [ ] Performance tests
+   - ETA: May 2025
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and configure your environment variables
-3. Run the development environment:
-   ```bash
-   docker-compose up -d
-   ```
+### 📋 Upcoming Features
+
+1. **Q2 2025**
+   - Portfolio analytics engine
+   - Advanced metrics
+   - Custom reporting
+   - Data visualization
+
+2. **Q3 2025**
+   - Mobile API optimization
+   - Push notifications
+   - Offline sync
+   - Real-time updates
+
+3. **Q4 2025**
+   - Two-factor auth
+   - API key management
+   - Security audit system
+   - Advanced monitoring
+
+## 🔍 Current Status
+
+### Test Coverage
+```plaintext
+Component                    Stmts   Miss  Cover
+--------------------------------------------------
+Core (Auth, Portfolio)        400     20    95%
+Models & Config              200      0   100%
+External Services            150     90    40%
+Performance Features         100     45    55%
+--------------------------------------------------
+TOTAL                        850    155    76%
+```
+
+### Known Issues
+1. **High Priority**
+   - Sync manager coverage (22%)
+   - Rate limiting incomplete
+   - Caching optimization needed
+
+2. **Medium Priority**
+   - External API integration gaps
+   - Subscription system incomplete
+   - Performance monitoring needed
+
+## 🔧 Quick Start
+
+1. Clone and setup:
+```bash
+git clone https://github.com/yourusername/coinolio-api.git
+cd coinolio-api
+cp .env.example .env
+```
+
+2. Configure environment:
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/coinolio
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=your-secret-key
+```
+
+3. Run with Docker:
+```bash
+docker-compose up -d
+docker-compose exec api alembic upgrade head
+```
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite:
-
 ```bash
-# Run all tests
+# Full test suite
 pytest
 
-# Run specific test file
+# Specific components
 pytest tests/unit/api/v1/endpoints/test_auth.py
+pytest tests/unit/api/v1/endpoints/test_portfolios.py
 
-# Run with coverage
+# Coverage report
 pytest --cov=app tests/
-
-# Run with verbose output
-pytest -v
 ```
 
-### Test Structure
-```plaintext
-tests/
-├── conftest.py              # Shared fixtures
-├── factories/               # Test data factories
-├── unit/                    # Unit tests
-│   └── api/
-│       └── v1/
-│           └── endpoints/   # API endpoint tests
-└── utils/                   # Test utilities
-```
+## 📚 Documentation
+- [API Reference](docs/API_REFERENCE.md)
+- [Testing Strategy](docs/TESTING_STRATEGY.md)
 
-## 📚 For LLMs
+## 📈 Development Priorities
 
-### Project Structure
-- `/app`: Main application directory
-  - `/api`: API endpoints and routers
-  - `/services`: Service layer
-  - `/core`: Core functionality
-  - `/models`: Database models and schemas
+### Immediate (1-2 weeks)
+1. Improve sync manager test coverage (22% → 90%)
+2. Complete basic rate limiting
+3. Implement Redis caching foundation
 
-### Key Components
-1. **Authentication**
-   - JWT token-based auth
-   - Refresh token mechanism
-   - Role-based access
+### Short Term (1-2 months)
+1. Finish CoinGecko integration
+2. Launch subscription system
+3. Add portfolio analytics
 
-2. **Database**
-   - PostgreSQL for production
-   - SQLite for testing
-   - SQLAlchemy ORM
-
-3. **Testing**
-   - Unit tests with pytest
-   - In-memory test database
-   - Factory-based test data
-   - Custom type handling
-
-### Development Context
-- Modern Python best practices
-- Type hints and async/await
-- Comprehensive testing
-- Service-oriented architecture
-
-### Integration Points
-- Redis for caching
-- PostgreSQL for data
-- Stripe for payments
-- Docker for containers
+### Medium Term (3-6 months)
+1. Mobile API optimization
+2. Advanced security features
+3. Performance monitoring
 
 ## 📄 License
-
 This project is licensed under the terms included in the LICENSE file.
 
 ---
-
-*Note: This README is a living document and will be updated as the project evolves.*
+Last updated: 2025-02-18

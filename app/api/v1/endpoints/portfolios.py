@@ -1,29 +1,38 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.base import get_db
 from app.core.deps import check_subscription, check_portfolio_limit
 from app.api.v1.endpoints.auth import get_current_user
-from app.models.user import (
-    User, Portfolio, PortfolioVersion,
-    PortfolioCreate, PortfolioUpdate, PortfolioResponse, PortfolioVersionResponse
+from app.models import User, Portfolio, PortfolioVersion
+from app.models.enums import SubscriptionTier
+from app.schemas.portfolio import (
+    PortfolioCreate, PortfolioUpdate, PortfolioResponse,
+    PortfolioVersionResponse, PortfolioData
 )
 from app.schemas.portfolio_sync import (
     SyncRequest, SyncResponse, SyncStatusResponse,
-    PortfolioData, SyncMetadata, SyncChange, ChangeType
+    SyncMetadata, SyncChange, ChangeType
 )
 from app.services.sync_manager import SyncManager
 
 router = APIRouter()
 sync_manager = SyncManager()
 
-def calculate_portfolio_metrics(data: dict) -> tuple[int, int]:
+def calculate_portfolio_metrics(data: dict) -> tuple[float, int]:
     """Calculate portfolio metrics from data"""
-    total_value = 0
-    asset_count = len(data.get("assets", {}))
-    # In a real app, you'd fetch current prices and calculate actual value
+    total_value = 0.0
+    assets = data.get("assets", {})
+    asset_count = len(assets)
+    
+    # Calculate total value
+    for asset in assets.values():
+        amount = float(asset.get("amount", 0))
+        cost_basis = float(asset.get("cost_basis", 0))
+        total_value += amount * cost_basis
+    
     return total_value, asset_count
 
 def create_portfolio_version(
@@ -59,7 +68,8 @@ def create_portfolio_version(
         data=portfolio.data,
         total_value_usd=total_value,
         asset_count=asset_count,
-        change_summary=change_summary
+        change_summary=change_summary,
+        created_at=datetime.now(timezone.utc)
     )
     db.add(version)
     return version
@@ -72,15 +82,18 @@ async def create_portfolio(
     _: None = Depends(check_portfolio_limit),
 ) -> Portfolio:
     """Create a new portfolio"""
-    total_value, asset_count = calculate_portfolio_metrics(portfolio_in.data.dict())
+    portfolio_data = portfolio_in.data.model_dump()
+    total_value, asset_count = calculate_portfolio_metrics(portfolio_data)
     
     portfolio = Portfolio(
         name=portfolio_in.name,
         description=portfolio_in.description,
-        data=portfolio_in.data.dict(),
+        data=portfolio_data,
         user_id=current_user.id,
         total_value_usd=total_value,
-        asset_count=asset_count
+        asset_count=asset_count,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     db.add(portfolio)
     db.commit()
@@ -100,7 +113,10 @@ async def get_portfolios(
 ) -> List[Portfolio]:
     """Get all portfolios for the current user"""
     portfolios = current_user.portfolios
-    if include_versions:
+    if not include_versions:
+        for portfolio in portfolios:
+            portfolio.versions = []
+    elif limit_versions:
         for portfolio in portfolios:
             portfolio.versions = portfolio.versions[:limit_versions]
     return portfolios
@@ -125,7 +141,9 @@ async def get_portfolio(
             detail="Portfolio not found"
         )
     
-    if include_versions:
+    if not include_versions:
+        portfolio.versions = []
+    else:
         portfolio.versions = portfolio.versions[:limit_versions]
     
     return portfolio
@@ -149,24 +167,26 @@ async def update_portfolio(
             detail="Portfolio not found"
         )
     
-    # Store old data for change tracking
-    old_data = portfolio.data if portfolio_in.data else None
+    # Store old data for version tracking
+    old_data = portfolio.data.copy()
     
     # Update fields
-    update_data = portfolio_in.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        if field == 'data' and value:
-            portfolio.version += 1
-            total_value, asset_count = calculate_portfolio_metrics(value.dict())
-            portfolio.total_value_usd = total_value
-            portfolio.asset_count = asset_count
-            portfolio.data = value.dict()
-        elif hasattr(portfolio, field):
-            setattr(portfolio, field, value)
+    if portfolio_in.name is not None:
+        portfolio.name = portfolio_in.name
+    if portfolio_in.description is not None:
+        portfolio.description = portfolio_in.description
+    if portfolio_in.data is not None:
+        portfolio.data = portfolio_in.data.model_dump()
+        total_value, asset_count = calculate_portfolio_metrics(portfolio.data)
+        portfolio.total_value_usd = total_value
+        portfolio.asset_count = asset_count
     
-    # Create new version if data was updated
-    if portfolio_in.data:
-        create_portfolio_version(db, portfolio, old_data)
+    # Increment version and update timestamp
+    portfolio.version += 1
+    portfolio.updated_at = datetime.now(timezone.utc)
+    
+    # Create new version
+    create_portfolio_version(db, portfolio, old_data)
     
     db.commit()
     db.refresh(portfolio)
@@ -192,20 +212,32 @@ async def get_portfolio_versions(
             detail="Portfolio not found"
         )
     
-    return portfolio.versions[offset:offset + limit]
+    versions = db.query(PortfolioVersion).filter(
+        PortfolioVersion.portfolio_id == portfolio_id
+    ).order_by(
+        PortfolioVersion.version.desc()
+    ).offset(offset).limit(limit).all()
+    
+    return versions
 
 @router.post("/{portfolio_id}/sync", response_model=SyncResponse)
 async def sync_portfolio(
     portfolio_id: int,
     sync_request: SyncRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    _: None = Depends(lambda: check_subscription("cloud_storage")),
-) -> Portfolio:
+    db: Session = Depends(get_db)
+) -> SyncResponse:
     """
     Sync a portfolio from mobile storage to cloud (Premium feature)
     Handles conflict resolution using three-way merge
     """
+    # Check subscription tier first
+    if current_user.subscription_tier != SubscriptionTier.PREMIUM:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This feature requires a premium subscription"
+        )
+
     portfolio = db.query(Portfolio).filter(
         Portfolio.id == portfolio_id,
         Portfolio.user_id == current_user.id
@@ -217,102 +249,58 @@ async def sync_portfolio(
             detail="Portfolio not found"
         )
     
-    # Get the base version (last synced state)
-    base_portfolio_version = db.query(PortfolioVersion).filter(
-        PortfolioVersion.portfolio_id == portfolio_id,
-        PortfolioVersion.version == sync_request.base_version
-    ).first()
+    # Get the sync status first
+    sync_status = sync_manager.get_sync_status(portfolio, sync_request)
     
-    if not base_portfolio_version:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Base version not found. Full sync required."
+    # If there are conflicts and force is not set, return conflict status
+    if sync_status["has_conflicts"] and not sync_request.force:
+        return SyncResponse(
+            status="CONFLICT",
+            server_version=portfolio.version,
+            server_data=portfolio.data,
+            conflicts=sync_status["conflicts"],
+            sync_metadata=SyncMetadata(
+                device_id=sync_request.device_id,
+                had_conflicts=True,
+                base_version=portfolio.version,
+                changes=[]
+            ),
+            is_cloud_synced=portfolio.is_cloud_synced,
+            last_sync_at=portfolio.last_sync_at
         )
     
-    # Perform three-way merge
-    merged_data, had_conflicts = sync_manager.merge_portfolios(
-        base=base_portfolio_version.data,
-        local=sync_request.local_data.dict(),
-        remote=portfolio.data,
-        device_id=sync_request.device_id
-    )
-    
-    # If we have conflicts and force is not set, return error
-    if had_conflicts and not sync_request.force:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Conflicts detected. Set force=true to merge automatically."
-        )
-    
-    # Calculate changes for version history
-    changes = sync_manager.detect_changes(portfolio.data, merged_data)
-    
-    # Convert changes to SyncChange objects
-    sync_changes = []
-    for asset_id in changes["added_assets"]:
-        sync_changes.append(SyncChange(
-            type=ChangeType.ADDED,
-            asset_id=asset_id,
-            new_value=merged_data["assets"][asset_id]
-        ))
-    for asset_id in changes["removed_assets"]:
-        sync_changes.append(SyncChange(
-            type=ChangeType.REMOVED,
-            asset_id=asset_id,
-            old_value=portfolio.data["assets"][asset_id]
-        ))
-    for asset_id in changes["modified_assets"]:
-        sync_changes.append(SyncChange(
-            type=ChangeType.MODIFIED,
-            asset_id=asset_id,
-            old_value=portfolio.data["assets"][asset_id],
-            new_value=merged_data["assets"][asset_id]
-        ))
-    if changes["settings_changed"]:
-        sync_changes.append(SyncChange(
-            type=ChangeType.SETTINGS_CHANGED,
-            old_value=portfolio.data["settings"],
-            new_value=merged_data["settings"]
-        ))
-    
-    # Create sync metadata
-    sync_metadata = SyncMetadata(
-        device_id=sync_request.device_id,
-        had_conflicts=had_conflicts,
-        base_version=sync_request.base_version,
-        changes=sync_changes
-    )
-    
-    # Update portfolio with merged data
+    # No conflicts or force sync, safe to update
+    old_data = portfolio.data.copy()
+    portfolio.data = sync_request.client_data
     portfolio.version += 1
-    portfolio.data = merged_data
     portfolio.is_cloud_synced = True
-    portfolio.last_sync_at = datetime.utcnow()
+    portfolio.last_sync_at = datetime.now(timezone.utc)
+    portfolio.updated_at = datetime.now(timezone.utc)
+    portfolio.had_conflicts = False
+    portfolio.pending_changes = 0
+    portfolio.last_sync_device = sync_request.device_id
     
-    # Calculate new metrics
-    total_value, asset_count = calculate_portfolio_metrics(merged_data)
+    # Update metrics
+    total_value, asset_count = calculate_portfolio_metrics(portfolio.data)
     portfolio.total_value_usd = total_value
     portfolio.asset_count = asset_count
     
-    # Create new version with change tracking
-    version = PortfolioVersion(
-        portfolio_id=portfolio.id,
-        version=portfolio.version,
-        data=merged_data,
-        total_value_usd=total_value,
-        asset_count=asset_count,
-        change_summary=sync_metadata.dict()
-    )
-    db.add(version)
+    # Create new version
+    version = create_portfolio_version(db, portfolio, old_data)
     
-    # Commit all changes
     db.commit()
     db.refresh(portfolio)
     
     return SyncResponse(
-        version=portfolio.version,
-        data=PortfolioData.parse_obj(merged_data),
-        sync_metadata=sync_metadata,
+        status="SUCCESS",
+        server_version=portfolio.version,
+        server_data=portfolio.data,
+        sync_metadata=SyncMetadata(
+            device_id=sync_request.device_id,
+            had_conflicts=False,
+            base_version=portfolio.version,
+            changes=[]
+        ),
         is_cloud_synced=portfolio.is_cloud_synced,
         last_sync_at=portfolio.last_sync_at
     )
@@ -322,7 +310,7 @@ async def get_sync_status(
     portfolio_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> dict:
+) -> SyncStatusResponse:
     """Get sync status and detect if conflicts exist"""
     portfolio = db.query(Portfolio).filter(
         Portfolio.id == portfolio_id,
@@ -335,16 +323,11 @@ async def get_sync_status(
             detail="Portfolio not found"
         )
     
-    last_version = portfolio.versions[0] if portfolio.versions else None
-    
     return SyncStatusResponse(
         is_synced=portfolio.is_cloud_synced,
-        last_sync=portfolio.last_sync_at,
-        current_version=portfolio.version,
-        last_sync_device=last_version.change_summary.get("device_id") if last_version else None,
-        had_conflicts=last_version.change_summary.get("had_conflicts", False) if last_version else False,
-        pending_changes=[
-            SyncChange.parse_obj(change)
-            for change in (last_version.change_summary.get("changes", []) if last_version else [])
-        ]
+        last_sync_at=portfolio.last_sync_at,
+        server_version=portfolio.version,
+        last_sync_device=portfolio.last_sync_device,
+        had_conflicts=portfolio.had_conflicts,
+        pending_changes=portfolio.pending_changes
     )
