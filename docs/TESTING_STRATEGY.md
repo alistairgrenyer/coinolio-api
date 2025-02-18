@@ -2,30 +2,38 @@
 
 ## Overview
 
-This document outlines our testing strategy for the Coinolio API, focusing on unit testing FastAPI endpoints while maintaining clean, maintainable tests.
+This document outlines our testing strategy for the Coinolio API, focusing on comprehensive testing of FastAPI endpoints while maintaining clean, maintainable tests.
 
 ## Implementation Status
 
 ### Completed
-1. **Test Infrastructure**
-   - SQLite in-memory database setup
-   - Custom JSON type handling for SQLite compatibility
-   - Test fixtures and factories
-   - Database session management
-
-2. **Authentication Tests**
+1. **Authentication Tests**
    - User registration
    - Login functionality
    - Token refresh mechanism
    - Current user retrieval
    - Error handling scenarios
 
+2. **Portfolio Tests**
+   - Portfolio CRUD operations
+   - Version history tracking
+   - Cloud sync functionality
+   - Subscription tier checks
+   - Error handling scenarios
+
+3. **Test Infrastructure**
+   - SQLite in-memory database setup
+   - Custom JSON type handling for SQLite compatibility
+   - Test fixtures and factories
+   - Database session management
+
 ### Pending
 1. **Additional Test Coverage**
-   - Portfolio management endpoints
-   - Subscription handling
-   - Rate limiting
-   - External API integration
+   - Subscription management endpoints
+   - Rate limiting functionality
+   - External API integrations (CoinGecko)
+   - Caching layer tests
+   - Background task tests
 
 ## Test Structure
 
@@ -33,12 +41,14 @@ This document outlines our testing strategy for the Coinolio API, focusing on un
 tests/
 ├── conftest.py              # Shared fixtures and DB setup
 ├── factories/               # Test data factories
-│   └── user.py             # User factory implementation
+│   ├── user.py             # User factory
+│   └── portfolio.py        # Portfolio factory
 ├── unit/                   # Unit tests
-│   ├── api/
-│   │   └── v1/
-│   │       └── endpoints/
-│   │           └── test_auth.py  # Authentication tests
+│   └── api/
+│       └── v1/
+│           └── endpoints/
+│               ├── test_auth.py       # Auth tests
+│               └── test_portfolios.py # Portfolio tests
 └── utils/                  # Test utilities
     └── db.py              # SQLite compatibility layer
 ```
@@ -53,36 +63,41 @@ tests/
 
 ### 2. Test Data Management
 ```python
-class UserFactory(factory.Factory):
+class PortfolioFactory(factory.Factory):
     class Meta:
-        model = User
-    email = factory.Faker('email')
-    hashed_password = factory.LazyFunction(lambda: get_password_hash("testpassword123"))
+        model = Portfolio
+        exclude = ('_sa_instance_state',)
+
+    name = factory.Faker('company')
+    description = factory.Faker('catch_phrase')
+    is_cloud_synced = False
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    # ... more fields
 ```
 
 ### 3. Fixtures
 ```python
 @pytest.fixture
-def db_session(db_engine):
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def test_user(client, test_user_data):
+    response = client.post(
+        f"{settings.API_V1_STR}/auth/register",
+        json=test_user_data
+    )
+    return response.json()
 ```
 
-### 4. Authentication Test Cases
-1. **Registration**
-   - Successful registration
-   - Duplicate email handling
-2. **Login**
-   - Successful login
-   - Invalid credentials
-3. **Token Management**
-   - Access token validation
-   - Refresh token workflow
-   - Token expiration
+### 4. Test Cases
+1. **Authentication**
+   - Registration success/failure
+   - Login validation
+   - Token refresh flow
+   - User data retrieval
+
+2. **Portfolio Management**
+   - Portfolio creation/update
+   - Version tracking
+   - Cloud sync (Premium feature)
+   - Subscription tier validation
 
 ## Best Practices Implemented
 
@@ -131,6 +146,7 @@ class SqliteJson(TypeDecorator):
 Running specific test files:
 ```bash
 pytest tests/unit/api/v1/endpoints/test_auth.py -v
+pytest tests/unit/api/v1/endpoints/test_portfolios.py -v
 ```
 
 Running with coverage:
@@ -140,13 +156,14 @@ pytest --cov=app tests/
 
 ## Next Steps
 
-1. **Expand Test Coverage**
-   - Implement portfolio endpoint tests
-   - Add subscription test cases
-   - Test rate limiting functionality
+1. **Additional Test Coverage**
+   - Subscription management tests
+   - Rate limiting tests
+   - External API mocking
+   - Cache integration tests
 
 2. **Performance Testing**
-   - Add load test scenarios
+   - Load test scenarios
    - Benchmark critical endpoints
    - Test caching effectiveness
 
