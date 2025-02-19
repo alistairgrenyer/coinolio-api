@@ -14,6 +14,7 @@ This document details the portfolio synchronization strategy implemented in Coin
 - `version`: Incremental counter for change tracking
 - `last_sync_at`: Timezone-aware timestamp of last sync
 - `last_sync_device`: Device identifier for sync origin
+- `is_cloud_synced`: Flag indicating sync status
 
 ## Synchronization Process
 
@@ -30,10 +31,34 @@ GET /api/v1/portfolios/{id}/sync-status
 ```
 
 ### 2. Change Detection
-- Compare client and server timestamps
-- Check version numbers
-- Detect data structure differences using DeepDiff
-- Consider device identifiers
+The system uses DeepDiff to detect changes in nested portfolio data structures:
+
+```python
+# Example change detection
+changes = sync_manager.detect_changes(server_data, client_data)
+
+# Sample changes output
+[
+    SyncChange(
+        type=ChangeType.MODIFIED,
+        path="@portfolios.default.assets.btc.amount",
+        value={"value": "2.0"}
+    ),
+    SyncChange(
+        type=ChangeType.ADDED,
+        path="@portfolios.default.assets.eth",
+        value={
+            "amount": "10.0",
+            "lastModified": "2025-02-19T00:00:00Z"
+        }
+    )
+]
+```
+
+Change types include:
+- `ADDED`: New data added
+- `DELETED`: Existing data removed
+- `MODIFIED`: Data value changed
 
 ### 3. Merge Strategy
 The system implements a "last-write-wins with server preference" strategy:
@@ -49,22 +74,31 @@ The system implements a "last-write-wins with server preference" strategy:
    - Increment version number
    - Update sync metadata
 
-## Conflict Resolution
+## Timezone Handling
 
-### Priority Rules
-1. Server data takes precedence in conflicts
-2. Newer timestamps win in version conflicts
-3. Device hierarchy can override timestamp rules
+### UTC Standardization
+All datetime values are converted to UTC for consistent comparison:
 
-### Resolution Process
 ```python
-if server_timestamp > client_timestamp:
-    use_server_data()
-elif client_timestamp > server_timestamp:
-    use_client_data()
-else:
-    use_server_data()  # Server preference
+def ensure_timezone_aware(dt: Optional[datetime]) -> datetime:
+    """Ensure a datetime is timezone-aware, defaulting to UTC"""
+    if dt is None:
+        return datetime.fromtimestamp(0, tz=timezone.utc)
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+        except ValueError:
+            return datetime.fromtimestamp(0, tz=timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 ```
+
+### Datetime Comparison
+- All timestamps are normalized to UTC
+- Naive datetimes are assumed to be UTC
+- ISO 8601 format used for string representation
+- 'Z' suffix handled for UTC timestamps
 
 ## Error Handling
 
@@ -87,67 +121,102 @@ else:
 ## Best Practices
 
 ### Client Implementation
-1. Store last sync timestamp
+1. Store last sync timestamp (UTC)
 2. Track local changes
 3. Implement retry logic
 4. Handle offline mode
+5. Validate timezone data
 
 ### Server Implementation
 1. Validate incoming data
 2. Preserve sync metadata
 3. Log sync operations
 4. Monitor sync patterns
+5. Ensure UTC consistency
 
 ## Testing Strategy
 
-### Key Test Scenarios
-1. Clean sync (no conflicts)
-2. Conflict resolution
-3. Network failure recovery
-4. Concurrent modifications
-5. Large data sets
+### Unit Tests
+1. **Change Detection**:
+   ```python
+   def test_detect_changes():
+       """Test detecting changes between server and client data"""
+       # Modify client data
+       client_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"
+       
+       changes = sync_manager.detect_changes(server_data, client_data)
+       assert len(changes) > 0
+       assert changes[0].type == ChangeType.MODIFIED
+   ```
 
-### Example Test Case
-```python
-def test_conflict_resolution():
-    # Setup conflicting states
-    server_data = create_portfolio_with_timestamp(t1)
-    client_data = create_portfolio_with_timestamp(t2)
-    
-    # Attempt sync
-    result = sync_manager.merge_portfolios(server_data, client_data)
-    
-    # Verify resolution
-    assert result.version > max(server_data.version, client_data.version)
-    assert result.last_sync_at > max(server_data.last_sync_at, 
-                                   client_data.last_sync_at)
-```
+2. **Timezone Handling**:
+   ```python
+   def test_timezone_handling():
+       """Test timezone-aware datetime processing"""
+       naive_time = datetime(2025, 1, 1)
+       aware_time = ensure_timezone_aware(naive_time)
+       assert aware_time.tzinfo == timezone.utc
+   ```
+
+3. **Conflict Resolution**:
+   ```python
+   def test_conflict_resolution():
+       """Test merge strategy with conflicts"""
+       status = sync_manager.get_sync_status(portfolio, sync_request)
+       assert status["has_conflicts"] is False
+       assert status["needs_sync"] is True
+   ```
+
+### Integration Tests
+1. Full sync cycle validation
+2. Network failure recovery
+3. Concurrent sync handling
+4. Performance monitoring
 
 ## Performance Considerations
 
-### Optimization Strategies
-1. Minimize data transfer
-2. Efficient change detection
-3. Batch synchronization
-4. Background processing
+### Optimization Techniques
+1. Efficient change detection
+2. Minimal data transfer
+3. Batch processing
+4. Caching strategies
 
-### Monitoring
-- Sync duration metrics
-- Conflict rate tracking
-- Error rate monitoring
-- Data size tracking
+### Monitoring Metrics
+1. Sync duration
+2. Conflict frequency
+3. Data transfer size
+4. Error rates
+
+## Security Considerations
+
+1. **Data Protection**:
+   - Encrypted transmission
+   - Secure storage
+   - Access control
+
+2. **Validation**:
+   - Input sanitization
+   - Schema validation
+   - Type checking
+
+3. **Audit Trail**:
+   - Sync logging
+   - Version history
+   - Change tracking
 
 ## Future Improvements
 
-### Planned Enhancements
-1. Granular conflict resolution
-2. Multi-device sync
-3. Real-time synchronization
-4. Differential sync
-5. Compression for large datasets
+1. **Q2 2025**:
+   - Differential sync
+   - Compression
+   - Batch operations
 
-### Migration Path
-- Versioned sync protocol
-- Backward compatibility
-- Gradual feature rollout
-- Client update strategy
+2. **Q3 2025**:
+   - Real-time sync
+   - Conflict resolution UI
+   - Sync analytics
+
+3. **Q4 2025**:
+   - Multi-device sync
+   - Offline-first approach
+   - Advanced conflict resolution

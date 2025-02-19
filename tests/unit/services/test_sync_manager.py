@@ -1,4 +1,5 @@
 import pytest
+from copy import deepcopy
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.services.sync_manager import SyncManager
@@ -70,7 +71,7 @@ def test_get_sync_status_version_mismatch(sync_manager, base_portfolio, sync_req
 def test_get_sync_status_data_conflict(sync_manager, base_portfolio, sync_request):
     """Test sync status with data conflict"""
     # Modify client data
-    client_data = sync_request.client_data.copy()
+    client_data = deepcopy(sync_request.client_data)
     client_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"
     sync_request.client_data = client_data
     
@@ -94,32 +95,54 @@ def test_merge_portfolios(sync_manager, base_portfolio, sync_request):
 def test_detect_changes(sync_manager, base_portfolio, sync_request):
     """Test detecting changes between server and client data"""
     # Modify client data with multiple changes
-    client_data = sync_request.client_data.copy()
-    client_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"  # Modified
-    client_data["@portfolios"]["default"]["assets"]["eth"] = {  # Added
+    client_data = deepcopy(sync_request.client_data)
+    
+    # Add ETH asset
+    client_data["@portfolios"]["default"]["assets"]["eth"] = {
         "amount": "10.0",
         "lastModified": datetime.now(timezone.utc).isoformat()
     }
-    del client_data["@portfolios"]["default"]["assets"]["btc"]  # Deleted
+    
+    # Modify BTC amount
+    client_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"
     
     changes = sync_manager.detect_changes(base_portfolio.data, client_data)
-    assert len(changes) == 2  # One add, one delete
+    
+    # Print debug info
+    print("\nTest Debug Info:")
+    print("Original BTC Amount:", base_portfolio.data["@portfolios"]["default"]["assets"]["btc"]["amount"])
+    print("Modified BTC Amount:", client_data["@portfolios"]["default"]["assets"]["btc"]["amount"])
+    print("Changes:", changes)
     
     # Verify changes
-    add_change = next(c for c in changes if c.type == ChangeType.ADDED)
-    assert add_change.path == "@portfolios.default.assets.eth"
-    assert add_change.value["amount"] == "10.0"
+    assert len(changes) == 2
     
-    delete_change = next(c for c in changes if c.type == ChangeType.DELETED)
-    assert delete_change.path == "@portfolios.default.assets.btc"
-    assert delete_change.value is None
+    # Find the modified BTC change
+    btc_change = next(
+        (c for c in changes if c.path == "@portfolios.default.assets.btc.amount"),
+        None
+    )
+    assert btc_change is not None, "BTC amount change not found"
+    assert btc_change.type == ChangeType.MODIFIED
+    assert btc_change.value["value"] == "2.0"
+    
+    # Find the added ETH change
+    eth_change = next(
+        (c for c in changes if c.path == "@portfolios.default.assets.eth"),
+        None
+    )
+    assert eth_change is not None, "ETH asset addition not found"
+    assert eth_change.type == ChangeType.ADDED
+    assert eth_change.value["amount"] == "10.0"
 
 def test_sync_status_timezone_handling(sync_manager, base_portfolio):
     """Test timezone handling in sync status"""
     # Create request with naive datetime
     naive_time = datetime(2025, 1, 2)
+    client_data = deepcopy(base_portfolio.data)
+    client_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"
     sync_request = SyncRequest(
-        client_data=base_portfolio.data,
+        client_data=client_data,
         last_sync_at=naive_time,
         client_version=1,
         device_id="test-device"

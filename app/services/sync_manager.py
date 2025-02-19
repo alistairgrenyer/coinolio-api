@@ -105,10 +105,17 @@ class SyncManager:
         """
         changes = []
         diff = DeepDiff(old_data, new_data, ignore_order=True)
+        
+        # Print the diff for debugging
+        print("\nDeepDiff Output:")
+        print("Added:", diff.get("dictionary_item_added", []))
+        print("Removed:", diff.get("dictionary_item_removed", []))
+        print("Changed:", diff.get("values_changed", []))
+        print("Type Changed:", diff.get("type_changes", []))
 
         # Handle added items
         for path in diff.get("dictionary_item_added", []):
-            clean_path = path.replace("root", "", 1).strip("[]'")
+            clean_path = path.replace("root['", "").replace("']['", ".").replace("']", "").replace("'", "")
             value = self._get_value_by_path(new_data, clean_path)
             changes.append(SyncChange(
                 type=ChangeType.ADDED,
@@ -118,7 +125,7 @@ class SyncManager:
 
         # Handle removed items
         for path in diff.get("dictionary_item_removed", []):
-            clean_path = path.replace("root", "", 1).strip("[]'")
+            clean_path = path.replace("root['", "").replace("']['", ".").replace("']", "").replace("'", "")
             changes.append(SyncChange(
                 type=ChangeType.DELETED,
                 path=clean_path
@@ -126,13 +133,28 @@ class SyncManager:
 
         # Handle modified items
         for path in diff.get("values_changed", []):
-            clean_path = path.replace("root", "", 1).strip("[]'")
+            clean_path = path.replace("root['", "").replace("']['", ".").replace("']", "").replace("'", "")
             value = self._get_value_by_path(new_data, clean_path)
             changes.append(SyncChange(
                 type=ChangeType.MODIFIED,
                 path=clean_path,
                 value=value if isinstance(value, dict) else {"value": value}
             ))
+
+        # Handle dictionary value changes
+        for path in diff.get("type_changes", []):
+            clean_path = path.replace("root['", "").replace("']['", ".").replace("']", "").replace("'", "")
+            value = self._get_value_by_path(new_data, clean_path)
+            changes.append(SyncChange(
+                type=ChangeType.MODIFIED,
+                path=clean_path,
+                value=value if isinstance(value, dict) else {"value": value}
+            ))
+        
+        # Print the changes for debugging
+        print("\nDetected Changes:")
+        for change in changes:
+            print(f"Type: {change.type}, Path: {change.path}, Value: {change.value}")
 
         return changes
 
