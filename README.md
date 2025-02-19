@@ -12,6 +12,83 @@ A modern, scalable cryptocurrency portfolio tracking and analytics API built wit
 - **Deployment**: Docker + Alembic
 - **Payments**: Stripe (planned)
 
+## 📁 Project Structure
+
+```
+app/
+├── api/                    # API endpoints and routes
+│   └── v1/
+│       ├── auth.py        # Authentication endpoints (97% coverage)
+│       ├── portfolios.py  # Portfolio management endpoints (93% coverage)
+│       ├── coins.py       # CoinGecko cryptocurrency data endpoints (44% coverage)
+│       └── subscriptions.py # Premium features and billing (37% coverage)
+│
+├── core/                   # Core functionality and configuration
+│   ├── config.py          # Environment and app configuration (100% coverage)
+│   ├── deps.py            # Dependency injection (74% coverage)
+│   ├── security.py        # JWT and password handling (95% coverage)
+│   ├── json.py            # JSON serialization utilities (90% coverage)
+│   └── rate_limit.py      # Rate limiting implementation (48% coverage)
+│
+├── db/                     # Database configuration and utilities
+│   ├── base.py            # SQLAlchemy base setup (69% coverage)
+│   ├── base_class.py      # Base model class (89% coverage)
+│   ├── base_model.py      # Shared model functionality (100% coverage)
+│   └── custom_types.py    # Custom database types (77% coverage)
+│
+├── models/                 # SQLAlchemy database models
+│   ├── portfolio.py       # Portfolio data model (81% coverage)
+│   ├── user.py            # User account model (100% coverage)
+│   └── enums.py          # Shared enumerations (100% coverage)
+│
+├── schemas/               # Pydantic models for API validation
+│   ├── portfolio.py      # Portfolio data validation (100% coverage)
+│   └── portfolio_sync.py # Sync data validation and types (64% coverage)
+│
+├── services/             # Business logic and external services
+│   ├── sync_manager.py  # Portfolio sync orchestration (87% coverage)
+│   ├── cache.py        # Redis caching implementation (62% coverage)
+│   └── coingecko.py    # CoinGecko API integration (41% coverage)
+│
+└── main.py              # FastAPI application setup (93% coverage)
+
+tests/                   # Test suite
+├── unit/               # Unit tests for all components
+└── integration/        # Integration tests (planned)
+
+docs/                   # Documentation
+├── API_REFERENCE.md    # API endpoint documentation
+├── TESTING_STRATEGY.md # Testing approach and guidelines
+├── portfolio_strategy.md # Portfolio management implementation details
+└── sync_strategy.md    # Portfolio sync implementation details
+
+### Key Components
+
+1. **API Layer** (`app/api/v1/`)
+   - RESTful endpoints for all application features
+   - JWT-based authentication and authorization
+   - Request validation and response formatting
+
+2. **Core Services** (`app/core/`)
+   - Application configuration and environment management
+   - Security and authentication utilities
+   - Rate limiting and performance optimization
+
+3. **Data Layer** (`app/models/ & app/db/`)
+   - SQLAlchemy models for data persistence
+   - Custom database types and utilities
+   - Migration management with Alembic
+
+4. **Business Logic** (`app/services/`)
+   - Portfolio synchronization between devices
+   - Caching strategy implementation
+   - External API integrations
+
+5. **Schema Validation** (`app/schemas/`)
+   - Request/response data validation
+   - Type safety and data transformation
+   - API documentation generation
+
 ## 🛠️ Implementation Status
 
 ### ✅ Core Features (90%+ Coverage)
@@ -29,6 +106,7 @@ A modern, scalable cryptocurrency portfolio tracking and analytics API built wit
    - [x] Cloud sync (Premium)
    - [x] Asset validation
    - [x] Subscription tier checks
+   - [x] Sync manager implementation (87% coverage)
 
 3. **Infrastructure** (100%)
    - [x] Database models and schemas
@@ -36,6 +114,7 @@ A modern, scalable cryptocurrency portfolio tracking and analytics API built wit
    - [x] Test framework
    - [x] Docker setup
    - [x] Migration system
+   - [x] CORS configuration for mobile app
 
 ### 🚧 In Development
 
@@ -85,25 +164,31 @@ A modern, scalable cryptocurrency portfolio tracking and analytics API built wit
 ### Test Coverage
 ```plaintext
 Component                    Stmts   Miss  Cover
---------------------------------------------------
-Core (Auth, Portfolio)        400     20    95%
-Models & Config              200      0   100%
-External Services            150     90    40%
-Performance Features         100     45    55%
---------------------------------------------------
-TOTAL                        850    155    76%
+-----------------------------------------------------------
+Auth Endpoints                 71      2    97%
+Portfolio Endpoints            68      5    93%
+Sync Manager                  91     12    87%
+Core & Config                122     23    81%
+Models & Schemas             287     67    77%
+External Services (CoinGecko)  32     19    41%
+Subscription System           73     46    37%
+Rate Limiting                 25     13    48%
+-----------------------------------------------------------
+TOTAL                        879    220    75%
 ```
 
 ### Known Issues
 1. **High Priority**
-   - Sync manager coverage (22%)
-   - Rate limiting incomplete
-   - Caching optimization needed
+   - Rate limiting implementation (48% complete)
+   - Redis caching optimization needed (62% coverage)
+   - Mobile sync conflict resolution edge cases
+   - Core dependencies need updating (Pydantic v2, SQLAlchemy v2 warnings)
 
 2. **Medium Priority**
-   - External API integration gaps
-   - Subscription system incomplete
-   - Performance monitoring needed
+   - CoinGecko API integration (41% complete)
+   - Subscription system implementation (37% complete)
+   - Performance monitoring setup needed
+   - API documentation updates required
 
 ## 🔧 Quick Start
 
@@ -148,7 +233,7 @@ pytest --cov=app tests/
 ## 📈 Development Priorities
 
 ### Immediate (1-2 weeks)
-1. Improve sync manager test coverage (22% → 90%)
+1. Complete sync manager test coverage (87% → 90%)
 2. Complete basic rate limiting
 3. Implement Redis caching foundation
 
