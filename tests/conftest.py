@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import StaticPool
 from datetime import datetime, timedelta, UTC
 
@@ -9,12 +9,13 @@ from app.main import app
 from app.db.base_model import Base
 from app.db.base import get_db
 from app.core.config import get_settings
-from app.core.security import create_access_token
+from app.core.security import create_access_token, get_password_hash
+from app.core.json import json_dumps
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def db_engine():
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
@@ -25,16 +26,40 @@ def db_engine():
     # Create all tables
     Base.metadata.create_all(bind=engine)
     
-    return engine
+    yield engine
+    
+    # Clean up
+    Base.metadata.drop_all(bind=engine)
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def db_session(db_engine):
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
-    db = TestingSessionLocal()
+    """Creates a new database session for each test function"""
+    connection = db_engine.connect()
+    transaction = connection.begin()
+    
+    # Create a session bound to the connection
+    TestingSessionLocal = sessionmaker(bind=connection, autocommit=False, autoflush=False)
+    session = TestingSessionLocal()
+    
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        session.close()
+        transaction.rollback()
+        connection.close()
+
+class CustomTestClient(TestClient):
+    def post(self, *args, **kwargs):
+        if 'json' in kwargs:
+            kwargs['content'] = json_dumps(kwargs.pop('json')).encode('utf-8')
+            kwargs['headers'] = {**kwargs.get('headers', {}), 'Content-Type': 'application/json'}
+        return super().post(*args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        if 'json' in kwargs:
+            kwargs['content'] = json_dumps(kwargs.pop('json')).encode('utf-8')
+            kwargs['headers'] = {**kwargs.get('headers', {}), 'Content-Type': 'application/json'}
+        return super().put(*args, **kwargs)
 
 @pytest.fixture
 def client(db_session):
@@ -42,14 +67,14 @@ def client(db_session):
         try:
             yield db_session
         finally:
-            db_session.close()
+            pass  # Session cleanup is handled by db_session fixture
     
     # Override database URL for testing
     test_settings = get_settings()
     test_settings.SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URL
     
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
+    with CustomTestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
 
@@ -67,23 +92,35 @@ def test_user_data():
     }
 
 @pytest.fixture
-def test_user(client, test_user_data):
-    response = client.post(
-        f"{get_settings().API_V1_STR}/auth/register",
-        json=test_user_data
+def test_user(db_session):
+    """Create a test user"""
+    from app.models.user import User
+    from app.models.enums import SubscriptionTier
+    
+    user = User(
+        email="test@example.com",
+        hashed_password=get_password_hash("testpassword123"),
+        is_active=True,
+        subscription_tier=SubscriptionTier.FREE
     )
-    assert response.status_code == 200
-    return response.json()
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
 @pytest.fixture
 def test_user_token(test_user, test_settings):
-    access_token_expires = timedelta(minutes=test_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    """Create a test token for authentication"""
     return create_access_token(
-        data={"sub": test_user["email"]},
-        expires_delta=access_token_expires
+        data={"sub": test_user.email},
+        expires_delta=timedelta(minutes=30),
     )
 
 @pytest.fixture
 def authorized_client(client, test_user_token):
-    client.headers["Authorization"] = f"Bearer {test_user_token}"
+    """Create an authorized client with test token"""
+    client.headers = {
+        **client.headers,
+        "Authorization": f"Bearer {test_user_token}"
+    }
     return client

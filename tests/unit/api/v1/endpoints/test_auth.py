@@ -70,8 +70,8 @@ class TestAuthEndpoints:
         response = authorized_client.get(f"{settings.API_V1_STR}/auth/me")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["email"] == test_user["email"]
-        assert data["id"] == test_user["id"]
+        assert data["email"] == test_user.email
+        assert data["id"] == test_user.id
 
     def test_get_current_user_invalid_token(self, client):
         client.headers["Authorization"] = "Bearer invalid_token"

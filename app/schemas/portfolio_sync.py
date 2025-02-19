@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional, List
-from datetime import datetime
-from pydantic import BaseModel, Field, validator, ConfigDict
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from enum import Enum
 
 class AssetTransaction(BaseModel):
@@ -10,23 +10,59 @@ class AssetTransaction(BaseModel):
     price_usd: str = Field(..., description="String for precise decimal handling")
     notes: Optional[str] = None
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_timezone_aware(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if 'timestamp' in values:
+            dt = values['timestamp']
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                except ValueError:
+                    dt = datetime.fromtimestamp(0, tz=timezone.utc)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            values['timestamp'] = dt.astimezone(timezone.utc)
+        return values
 
 class AssetDetails(BaseModel):
     amount: str = Field(..., description="String for precise decimal handling")
     cost_basis: str = Field(..., description="Average cost basis in USD")
     notes: Optional[str] = None
-    last_modified: datetime = Field(default_factory=datetime.utcnow)
+    last_modified: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     transactions: List[AssetTransaction] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_timezone_aware(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if 'last_modified' in values:
+            dt = values['last_modified']
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                except ValueError:
+                    dt = datetime.fromtimestamp(0, tz=timezone.utc)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            values['last_modified'] = dt.astimezone(timezone.utc)
+        return values
 
 class PortfolioSettings(BaseModel):
     preferred_currency: str = "usd"
@@ -40,10 +76,28 @@ class PortfolioMetadata(BaseModel):
     platform: str = Field(..., description="ios, android, web")
     last_price_update: Optional[datetime] = None
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_timezone_aware(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if 'last_price_update' in values and values['last_price_update']:
+            dt = values['last_price_update']
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                except ValueError:
+                    dt = datetime.fromtimestamp(0, tz=timezone.utc)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            values['last_price_update'] = dt.astimezone(timezone.utc)
+        return values
 
 class PortfolioData(BaseModel):
     """Complete portfolio data structure"""
@@ -55,103 +109,128 @@ class PortfolioData(BaseModel):
     metadata: PortfolioMetadata
     schema_version: str = "1.0.0"
 
-    @validator('assets')
-    def validate_assets(cls, v):
+    @model_validator(mode='before')
+    @classmethod
+    def validate_assets(cls, values):
         """Ensure all assets have required fields"""
-        for asset_id, asset in v.items():
-            if not isinstance(asset, AssetDetails):
+        if not isinstance(values, dict):
+            return values
+        
+        assets = values.get('assets', {})
+        if not isinstance(assets, dict):
+            raise ValueError("Assets must be a dictionary")
+            
+        for asset_id, asset in assets.items():
+            if not isinstance(asset, (dict, AssetDetails)):
                 raise ValueError(f"Asset {asset_id} must be an AssetDetails object")
-        return v
+        return values
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
+    )
 
 class ChangeType(str, Enum):
     ADDED = "added"
-    REMOVED = "removed"
+    DELETED = "deleted"
     MODIFIED = "modified"
-    SETTINGS_CHANGED = "settings_changed"
 
 class SyncChange(BaseModel):
     type: ChangeType
-    asset_id: Optional[str] = None
-    old_value: Optional[Dict[str, Any]] = None
-    new_value: Optional[Dict[str, Any]] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        json_encoders = {
+    path: str
+    value: Optional[Dict[str, Any]] = None
+    
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
-
-class SyncMetadata(BaseModel):
-    device_id: str = Field(default="unknown")  # Default to "unknown" if not provided
-    had_conflicts: bool = False
-    base_version: Optional[int] = None
-    changes: List[SyncChange] = []
-    sync_timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat()
-        }
+    )
 
 class SyncRequest(BaseModel):
     client_data: Dict[str, Any]
     last_sync_at: Optional[datetime]
-    client_version: int = 1
-    force: bool = False
-    device_id: str = Field(default="unknown")  # Add device_id to request
+    client_version: int
+    device_id: str
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
+    )
 
-class SyncResponse(BaseModel):
-    """Response body for portfolio sync"""
-    status: str
-    server_version: int
-    server_data: Optional[Dict[str, Any]] = None
-    conflicts: Optional[Dict[str, Any]] = None
-    sync_metadata: Optional[SyncMetadata] = None
-    is_cloud_synced: bool = False
-    last_sync_at: Optional[datetime] = None
-
-    class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat()
-        }
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_timezone_aware(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if 'last_sync_at' in values and values['last_sync_at']:
+            dt = values['last_sync_at']
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                except ValueError:
+                    dt = datetime.fromtimestamp(0, tz=timezone.utc)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            values['last_sync_at'] = dt.astimezone(timezone.utc)
+        return values
 
 class SyncStatusResponse(BaseModel):
-    """Response body for sync status check"""
-    is_synced: bool
-    last_sync_at: Optional[datetime]
+    needs_sync: bool
+    has_conflicts: bool
     server_version: int
-    last_sync_device: Optional[str] = None
-    had_conflicts: bool = False
-    pending_changes: int = 0
+    server_last_sync: Optional[datetime]
 
-    class Config:
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda dt: dt.isoformat()
         }
-
-class SyncConflict(BaseModel):
-    """Represents a sync conflict that needs resolution"""
-    asset_id: str
-    local_version: AssetDetails
-    remote_version: AssetDetails
-    base_version: Optional[AssetDetails]
-    conflict_type: str = Field(..., description="modify_modify, add_add, modify_delete")
-
-class ConflictResolutionRequest(BaseModel):
-    """Request body for resolving conflicts manually"""
-    device_id: str
-    conflicts: Dict[str, str] = Field(
-        ...,
-        description="Map of asset_id to chosen version ('local' or 'remote')"
     )
-    base_version: int
+
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_timezone_aware(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if 'server_last_sync' in values and values['server_last_sync']:
+            dt = values['server_last_sync']
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                except ValueError:
+                    dt = datetime.fromtimestamp(0, tz=timezone.utc)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            values['server_last_sync'] = dt.astimezone(timezone.utc)
+        return values
+
+class SyncResponse(BaseModel):
+    success: bool
+    version: int
+    data: Optional[Dict[str, Any]] = None
+    changes: List[SyncChange] = Field(default_factory=list)
+    last_sync_at: Optional[datetime] = None
+
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda dt: dt.isoformat()
+        }
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_timezone_aware(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if 'last_sync_at' in values and values['last_sync_at']:
+            dt = values['last_sync_at']
+            if isinstance(dt, str):
+                try:
+                    dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                except ValueError:
+                    dt = datetime.fromtimestamp(0, tz=timezone.utc)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            values['last_sync_at'] = dt.astimezone(timezone.utc)
+        return values
