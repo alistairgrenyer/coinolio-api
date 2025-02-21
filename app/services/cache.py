@@ -7,11 +7,8 @@ settings = get_settings()
 
 class RedisCache:
     def __init__(self):
-        self.redis = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=settings.REDIS_DB,
-            password=settings.REDIS_PASSWORD,
+        self.redis = redis.from_url(
+            settings.REDIS_URL,
             decode_responses=True
         )
         self.default_expire = settings.CACHE_EXPIRE_MINUTES * 60  # Convert to seconds
