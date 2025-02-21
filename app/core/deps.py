@@ -1,7 +1,6 @@
 from typing import Optional, Callable
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, UTC
 from fastapi.security import OAuth2PasswordBearer
 
 from app.db.base import get_db

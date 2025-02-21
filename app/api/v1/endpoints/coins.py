@@ -1,10 +1,7 @@
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 
 from app.core.deps import get_optional_current_user, check_rate_limit
-from app.db.base import get_db
 from app.services.coingecko import CoinGeckoService
 from app.services.cache import RedisCache
 from app.models.user import User

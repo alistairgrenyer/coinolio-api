@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
 from app.models.enums import UserRole, SubscriptionTier

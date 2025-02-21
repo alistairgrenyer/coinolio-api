@@ -13,7 +13,6 @@ from app.schemas.portfolio import (
 )
 from app.schemas.portfolio_sync import (
     SyncRequest, SyncResponse, SyncStatusResponse,
-    SyncChange, ChangeType
 )
 from app.services.sync_manager import SyncManager
 

@@ -1,9 +1,5 @@
-import pytest
 from fastapi import status
-from datetime import datetime, timedelta
 from app.core.config import get_settings
-from app.models.user import User
-from tests.factories.user import UserFactory
 
 settings = get_settings()
 

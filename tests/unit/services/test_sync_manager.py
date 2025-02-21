@@ -1,10 +1,9 @@
 import pytest
 from copy import deepcopy
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
 from app.services.sync_manager import SyncManager
 from app.models.portfolio import Portfolio
-from app.schemas.portfolio_sync import SyncRequest, SyncChange, ChangeType
+from app.schemas.portfolio_sync import SyncRequest, ChangeType
 
 @pytest.fixture
 def sync_manager():
