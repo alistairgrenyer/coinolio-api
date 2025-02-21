@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from datetime import timedelta
 
 class Settings(BaseSettings):
     # API Configuration

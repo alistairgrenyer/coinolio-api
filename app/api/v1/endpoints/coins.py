@@ -1,10 +1,7 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 
 from app.core.deps import get_optional_current_user, check_rate_limit
-from app.db.base import get_db
 from app.services.coingecko import CoinGeckoService
 from app.services.cache import RedisCache
 from app.models.user import User
@@ -28,6 +25,11 @@ async def get_coin_prices(
     Get current prices for a list of coins.
     Public endpoint with rate limiting for unauthenticated users.
     """
+    if not ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No coin ids provided"
+        )
     # Check cache first
     cache_key = f"prices:{ids}:{vs_currency}"
     cached_data = await cache.get(cache_key)
@@ -37,6 +39,11 @@ async def get_coin_prices(
     # Get fresh data from CoinGecko
     coin_ids = ids.split(",")
     data = await coingecko.get_coins_markets(vs_currency=vs_currency, ids=coin_ids)
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="One or more coins not found"
+        )
     
     # Cache the response with a single duration for all users
     await cache.set(cache_key, data, expire=CACHE_DURATION)
@@ -63,7 +70,10 @@ async def get_coin_history(
     ]["historical_data_days"]
     
     if days > max_days:
-        days = max_days
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You have reached your historical data limit ({max_days} days). Upgrade to Premium for more data."
+        )
     
     # Check cache
     cache_key = f"history:{coin_id}:{vs_currency}:{days}"

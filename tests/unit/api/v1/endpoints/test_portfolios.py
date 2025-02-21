@@ -8,7 +8,6 @@ from app.core.config import get_settings
 from app.models.user import User
 from app.models.portfolio import Portfolio
 from app.models.enums import SubscriptionTier
-from app.schemas.portfolio_sync import SyncRequest, SyncStatusResponse, SyncResponse
 
 settings = get_settings()
 

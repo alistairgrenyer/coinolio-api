@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from deepdiff import DeepDiff
 from sqlalchemy.orm import Session

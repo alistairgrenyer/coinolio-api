@@ -1,6 +1,5 @@
 from fastapi import HTTPException, Request
 from redis import Redis
-import time
 from app.core.config import get_settings
 
 settings = get_settings()

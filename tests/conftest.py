@@ -1,19 +1,75 @@
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from datetime import datetime, timedelta, UTC
+from datetime import timedelta
+from unittest.mock import patch
 
 from app.main import app
 from app.db.base_model import Base
 from app.db.base import get_db
 from app.core.config import get_settings
 from app.core.security import create_access_token, get_password_hash
-from app.core.json import json_dumps
+from app.models.enums import SubscriptionTier
+
+from tests.utils.redis import MockRedis
+from tests.utils.client import CustomTestClient
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+
+@pytest.fixture(autouse=True)
+def mock_redis_globally(monkeypatch):
+    """Mock Redis globally for all tests"""
+    mock_redis = MockRedis()
+    
+    # Mock Redis connection to prevent actual connection attempts
+    class MockConnection:
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        def connect(self):
+            pass
+        
+        def disconnect(self):
+            pass
+        
+        def send_command(self, *args, **kwargs):
+            pass
+    
+    # Mock Redis connection pool
+    class MockConnectionPool:
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        def get_connection(self, *args, **kwargs):
+            return MockConnection()
+        
+        def release(self, *args, **kwargs):
+            pass
+        
+        def disconnect(self, *args, **kwargs):
+            pass
+    
+    # Patch all Redis-related functionality
+    monkeypatch.setattr("redis.Redis.from_url", lambda *args, **kwargs: mock_redis)
+    monkeypatch.setattr("redis.Redis", lambda *args, **kwargs: mock_redis)
+    monkeypatch.setattr("redis.connection.Connection", MockConnection)
+    monkeypatch.setattr("redis.connection.ConnectionPool", MockConnectionPool)
+    monkeypatch.setattr("redis.connection.UnixDomainSocketConnection", MockConnection)
+    
+    # Also patch the Redis instances in our app
+    from app.core.rate_limit import rate_limiter
+    from app.services.cache import RedisCache
+    
+    # Create a new instance of RedisCache with our mock Redis
+    mock_cache = RedisCache()
+    mock_cache.redis = mock_redis
+    
+    # Patch the rate limiter and cache instances
+    rate_limiter.redis = mock_redis
+    with patch("app.api.v1.endpoints.coins.cache", mock_cache):
+        yield mock_redis
 
 @pytest.fixture(scope="session")
 def db_engine():
@@ -48,19 +104,6 @@ def db_session(db_engine):
         transaction.rollback()
         connection.close()
 
-class CustomTestClient(TestClient):
-    def post(self, *args, **kwargs):
-        if 'json' in kwargs:
-            kwargs['content'] = json_dumps(kwargs.pop('json')).encode('utf-8')
-            kwargs['headers'] = {**kwargs.get('headers', {}), 'Content-Type': 'application/json'}
-        return super().post(*args, **kwargs)
-
-    def put(self, *args, **kwargs):
-        if 'json' in kwargs:
-            kwargs['content'] = json_dumps(kwargs.pop('json')).encode('utf-8')
-            kwargs['headers'] = {**kwargs.get('headers', {}), 'Content-Type': 'application/json'}
-        return super().put(*args, **kwargs)
-
 @pytest.fixture
 def client(db_session):
     def override_get_db():
@@ -82,6 +125,7 @@ def client(db_session):
 def test_settings():
     settings = get_settings()
     settings.SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URL
+    settings.REDIS_URL = "redis://localhost:6379/0"  # Not used since we mock RedisCache
     return settings
 
 @pytest.fixture
@@ -95,7 +139,6 @@ def test_user_data():
 def test_user(db_session):
     """Create a test user"""
     from app.models.user import User
-    from app.models.enums import SubscriptionTier
     
     user = User(
         email="test@example.com",
