@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from datetime import timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from app.main import app
 from app.db.base_model import Base
@@ -12,10 +12,8 @@ from app.core.config import get_settings
 from app.core.security import create_access_token, get_password_hash
 from app.models.enums import SubscriptionTier
 
-from tests.utils.redis_mock import MockRedis
-from tests.utils.cache_mock import MockCache
-from tests.utils.rate_limiter_mock import MockRateLimiter
-from tests.utils.test_client import CustomTestClient
+from tests.utils.redis import MockRedis
+from tests.utils.client import CustomTestClient
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -105,20 +103,6 @@ def db_session(db_engine):
         session.close()
         transaction.rollback()
         connection.close()
-
-@pytest.fixture
-def mock_rate_limiter(mock_redis_globally):
-    """Provide a MockRateLimiter instance and patch the rate limiter in endpoints"""
-    mock_limiter = MockRateLimiter(mock_redis_globally)
-    with patch("app.core.deps.rate_limiter", mock_limiter):
-        yield mock_limiter
-
-@pytest.fixture
-def mock_cache(mock_redis_globally):
-    """Provide a MockCache instance and patch the cache in endpoints"""
-    mock_cache = MockCache(mock_redis_globally)
-    with patch("app.api.v1.endpoints.coins.cache", mock_cache):
-        yield mock_cache
 
 @pytest.fixture
 def client(db_session):
