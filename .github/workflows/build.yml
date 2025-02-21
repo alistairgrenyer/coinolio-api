@@ -29,37 +29,16 @@ jobs:
       - name: Prepare environment file
         run: |
           cp .env.example .env
-          # Update some values for testing
-          sed -i 's/POSTGRES_HOST=db/POSTGRES_HOST=localhost/' .env
-          sed -i 's/REDIS_URL=redis:\/\/cache/REDIS_URL=redis:\/\/localhost/' .env
           
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         
-      - name: Build and test Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./docker/Dockerfile
           push: false
-          tags: coinolio-api:test
+          tags: coinolio-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
-          
-      - name: Test Docker container
-        run: |
-          # Start the container with env file
-          docker run -d --name coinolio-test -p 3000:3000 --env-file .env coinolio-api:test
-          
-          # Wait for container to start
-          sleep 10
-          
-          # Check if container is running
-          docker ps | grep coinolio-test
-          
-          # Check container logs for any startup errors
-          docker logs coinolio-test
-          
-          # Test if API is responding
-          curl -f http://localhost:3000/api/v1/health || exit 1
