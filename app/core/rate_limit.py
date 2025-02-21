@@ -35,10 +35,7 @@ class RateLimiter:
             pipe.incr(key)
         pipe.execute()
 
-rate_limiter = RateLimiter(Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB,
-    password=settings.REDIS_PASSWORD,
+rate_limiter = RateLimiter(Redis.from_url(
+    settings.REDIS_URL,
     decode_responses=True
 ))
