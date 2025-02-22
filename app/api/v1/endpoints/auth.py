@@ -3,13 +3,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from jose import JWTError, jwt
-import uuid
+from jose import jwt, JWTError
 
 from app.core.config import get_settings
+from app.core.deps import get_db
 from app.core.security import create_access_token, verify_password, get_password_hash
-from app.models.user import User, UserCreate, UserResponse, Token, TokenData, RefreshToken
-from app.db.base import get_db
+from app.models.user import User, UserCreate, UserResponse, Token, RefreshToken
+from app.models.enums import TierPrivileges
+import uuid
 
 settings = get_settings()
 router = APIRouter()
@@ -29,17 +30,21 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
     return db_user
 
-def create_refresh_token(db: Session, user_id: int) -> str:
+def create_refresh_token(db: Session, user: User) -> str:
+    """Create a refresh token for a user"""
     token = str(uuid.uuid4())
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        days=TierPrivileges.get_refresh_token_expire_days(user.subscription_tier)
+    )
     
     db_token = RefreshToken(
         token=token,
-        expires_at=expires_at,
-        user_id=user_id
+        user_id=user.id,
+        expires_at=expires_at
     )
     db.add(db_token)
     db.commit()
+    
     return token
 
 async def get_current_user(
@@ -92,15 +97,22 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Get expiration time based on user's tier
+    expires_delta = timedelta(minutes=TierPrivileges.get_access_token_expire_minutes(user.subscription_tier))
+    
     # Create access token
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email},
-        expires_delta=access_token_expires
+        data={
+            "sub": user.email,
+            "tier": user.subscription_tier,
+            "portfolio_limit": TierPrivileges.get_portfolio_limit(user.subscription_tier),
+            "historical_days": TierPrivileges.get_historical_data_days(user.subscription_tier)
+        },
+        expires_delta=expires_delta
     )
     
     # Create refresh token
-    refresh_token = create_refresh_token(db, user.id)
+    refresh_token = create_refresh_token(db, user)
     
     return {
         "access_token": access_token,
@@ -127,15 +139,20 @@ async def refresh_token(
         )
     
     # Create new access token
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=TierPrivileges.get_access_token_expire_minutes(db_token.user.subscription_tier))
     access_token = create_access_token(
-        data={"sub": db_token.user.email},
+        data={
+            "sub": db_token.user.email,
+            "tier": db_token.user.subscription_tier,
+            "portfolio_limit": TierPrivileges.get_portfolio_limit(db_token.user.subscription_tier),
+            "historical_days": TierPrivileges.get_historical_data_days(db_token.user.subscription_tier)
+        },
         expires_delta=access_token_expires
     )
     
     # Create new refresh token and revoke old one
     db_token.is_revoked = True
-    new_refresh_token = create_refresh_token(db, db_token.user_id)
+    new_refresh_token = create_refresh_token(db, db_token.user)
     db.commit()
     
     return {
