@@ -45,7 +45,7 @@ def compare_data(d1, d2):
         for key in d1:
             compare_data(d1[key], d2[key])
     elif isinstance(d1, list) and isinstance(d2, list):
-        assert len(d1) == len(d2), f"List lengths don't match: {len(d1)} != {len(d2)}"
+        assert len(d1) == len(d2), f"list lengths don't match: {len(d1)} != {len(d2)}"
         for i1, i2 in zip(sorted(d1), sorted(d2)):
             compare_data(i1, i2)
     else:

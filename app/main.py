@@ -47,5 +47,6 @@ app.include_router(
 )
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
+    """Check if the service is healthy"""
     return {"status": "healthy"}

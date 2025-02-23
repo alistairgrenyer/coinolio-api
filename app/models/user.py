@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
@@ -67,7 +67,7 @@ class UserResponse(UserBase):
     subscription_expires_at: Optional[datetime] = None
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
-    portfolios: List[PortfolioResponse] = []
+    portfolios: list[PortfolioResponse] = []
 
     model_config = ConfigDict(
         from_attributes=True,

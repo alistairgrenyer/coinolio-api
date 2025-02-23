@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -17,11 +17,11 @@ class UserRepository(BaseRepository[User, UserCreate, UserResponse]):
         """Get a user by ID"""
         return db.query(User).filter(User.id == id).first()
     
-    def get_active_users(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[User]:
+    def get_active_users(self, db: Session, *, skip: int = 0, limit: int = 100) -> list[User]:
         """Get active users with pagination"""
         return (
             db.query(User)
-            .filter(User.is_active == True)
+            .filter(User.is_active == True)  # noqa: E712
             .offset(skip)
             .limit(limit)
             .all()
@@ -29,7 +29,7 @@ class UserRepository(BaseRepository[User, UserCreate, UserResponse]):
     
     def get_by_subscription_tier(
         self, db: Session, *, tier: SubscriptionTier, skip: int = 0, limit: int = 100
-    ) -> List[User]:
+    ) -> list[User]:
         """Get users by subscription tier"""
         return (
             db.query(User)
@@ -39,7 +39,7 @@ class UserRepository(BaseRepository[User, UserCreate, UserResponse]):
             .all()
         )
     
-    def get_expired_subscriptions(self, db: Session) -> List[User]:
+    def get_expired_subscriptions(self, db: Session) -> list[User]:
         """Get users with expired subscriptions"""
         now = datetime.now(timezone.utc)
         return (
@@ -54,7 +54,7 @@ class RefreshTokenRepository(BaseRepository[RefreshToken, RefreshToken, RefreshT
         """Get a refresh token by token string"""
         return db.query(RefreshToken).filter(RefreshToken.token == token).first()
     
-    def get_active_by_user(self, db: Session, *, user_id: int) -> List[RefreshToken]:
+    def get_active_by_user(self, db: Session, *, user_id: int) -> list[RefreshToken]:
         """Get active refresh tokens for a user"""
         now = datetime.now(timezone.utc)
         return (
@@ -62,7 +62,7 @@ class RefreshTokenRepository(BaseRepository[RefreshToken, RefreshToken, RefreshT
             .filter(
                 RefreshToken.user_id == user_id,
                 RefreshToken.expires_at > now,
-                RefreshToken.is_revoked == False
+                RefreshToken.is_revoked == False  # noqa: E712
             )
             .all()
         )

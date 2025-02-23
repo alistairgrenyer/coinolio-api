@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Any
 
 from pydantic_settings import BaseSettings
 
@@ -47,7 +48,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: dict[str, Any]):
         super().__init__(**kwargs)
         self.SQLALCHEMY_DATABASE_URI = self._build_db_uri()
 

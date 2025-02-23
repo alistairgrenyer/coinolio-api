@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
@@ -31,7 +32,7 @@ class Portfolio(Base):
     # Relationships
     user = relationship("User", back_populates="portfolios")
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: dict[str, Any]):
         # Ensure timezone awareness for datetime fields
         if kwargs.get("last_sync_at"):
             dt = kwargs["last_sync_at"]
