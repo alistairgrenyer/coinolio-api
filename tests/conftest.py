@@ -157,7 +157,7 @@ def test_user_token(test_user, test_settings):
     return auth_service.create_access_token(
         data={
             "sub": test_user.email,
-            "tier": test_user.subscription_tier,
+            "subscription_tier": test_user.subscription_tier,
             "role": test_user.role
         },
         expires_delta=timedelta(minutes=30),
@@ -169,5 +169,42 @@ def authorized_client(client, test_user_token):
     client.headers = {
         **client.headers,
         "Authorization": f"Bearer {test_user_token}"
+    }
+    return client
+
+@pytest.fixture
+def test_premium_user(db_session):
+    """Create a test premium user"""
+    from app.models.user import User
+    
+    user = User(
+        email="test@example.com",
+        hashed_password=auth_service.get_password_hash("testpassword123"),
+        is_active=True,
+        subscription_tier=SubscriptionTier.PREMIUM
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+@pytest.fixture
+def test_premium_user_token(test_premium_user, test_settings):
+    """Create a test token for authentication"""
+    return auth_service.create_access_token(
+        data={
+            "sub": test_premium_user.email,
+            "subscription_tier": test_premium_user.subscription_tier,
+            "role": test_premium_user.role
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+
+@pytest.fixture
+def premium_authorized_client(client, test_premium_user_token):
+    """Create an authorized client with test token"""
+    client.headers = {
+        **client.headers,
+        "Authorization": f"Bearer {test_premium_user_token}"
     }
     return client

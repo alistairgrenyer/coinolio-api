@@ -1,7 +1,9 @@
 """Test cases for the coins endpoints"""
 import pytest
+from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 from app.models.enums import SubscriptionTier
+from app.services.auth import auth_service
 
 # Test data
 MOCK_PRICES_DATA = {
@@ -54,8 +56,7 @@ def mock_deps():
     coingecko_mock.get_trending_coins = AsyncMock(return_value=MOCK_TRENDING_DATA)
     
     with patch("app.api.v1.endpoints.coins.cache", cache_mock), \
-         patch("app.api.v1.endpoints.coins.coingecko", coingecko_mock), \
-         patch("app.api.v1.endpoints.coins.check_rate_limit", AsyncMock()):  # Mock rate limiter
+         patch("app.api.v1.endpoints.coins.coingecko", coingecko_mock):
         yield {
             "cache": cache_mock,
             "coingecko": coingecko_mock
@@ -65,9 +66,9 @@ class TestCoinPrices:
     """Test cases for /coins/prices endpoint"""
     
     @pytest.mark.asyncio
-    async def test_get_coin_prices_cache_miss(self, client, mock_deps):
+    async def test_get_coin_prices_cache_miss(self, authorized_client, mock_deps):
         """Test getting coin prices when not in cache"""
-        response = client.get("/api/v1/coins/prices?ids=bitcoin,ethereum")
+        response = authorized_client.get("/api/v1/coins/prices?ids=bitcoin,ethereum")
         assert response.status_code == 200
         assert response.json() == MOCK_PRICES_DATA
         
@@ -75,31 +76,30 @@ class TestCoinPrices:
         mock_deps["cache"].set.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_coin_prices_cache_hit(self, client, mock_deps):
+    async def test_get_coin_prices_cache_hit(self, authorized_client, mock_deps):
         """Test getting coin prices when in cache"""
         mock_deps["cache"].get.return_value = MOCK_PRICES_DATA
         
-        response = client.get("/api/v1/coins/prices?ids=bitcoin,ethereum")
+        response = authorized_client.get("/api/v1/coins/prices?ids=bitcoin,ethereum")
         assert response.status_code == 200
         assert response.json() == MOCK_PRICES_DATA
         
         mock_deps["coingecko"].get_coins_markets.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_get_coin_prices_invalid_ids(self, client):
+    async def test_get_coin_prices_invalid_ids(self, authorized_client):
         """Test getting prices with invalid coin IDs"""
-        response = client.get("/api/v1/coins/prices?ids=")
+        response = authorized_client.get("/api/v1/coins/prices?ids=")
         assert response.status_code == 422
 
 class TestCoinHistory:
     """Test cases for /coins/historical endpoint"""
     
     @pytest.mark.asyncio
-    async def test_get_coin_history_premium_user(self, authorized_client, mock_deps, test_user):
+    async def test_get_coin_history_premium_user(self, premium_authorized_client, mock_deps, test_premium_user):
         """Test getting coin history as premium user"""
-        test_user.subscription_tier = SubscriptionTier.PREMIUM
         
-        response = authorized_client.get("/api/v1/coins/historical/bitcoin?days=365")
+        response = premium_authorized_client.get("/api/v1/coins/historical/bitcoin?days=365")
         assert response.status_code == 200
         assert response.json() == MOCK_HISTORY_DATA
         
@@ -118,9 +118,9 @@ class TestTrendingCoins:
     """Test cases for /coins/trending endpoint"""
     
     @pytest.mark.asyncio
-    async def test_get_trending_coins_cache_miss(self, client, mock_deps):
+    async def test_get_trending_coins_cache_miss(self, authorized_client, mock_deps):
         """Test getting trending coins when not in cache"""
-        response = client.get("/api/v1/coins/trending")
+        response = authorized_client.get("/api/v1/coins/trending")
         assert response.status_code == 200
         assert response.json() == MOCK_TRENDING_DATA
         
@@ -128,11 +128,11 @@ class TestTrendingCoins:
         mock_deps["cache"].set.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_trending_coins_cache_hit(self, client, mock_deps):
+    async def test_get_trending_coins_cache_hit(self, authorized_client, mock_deps):
         """Test getting trending coins when in cache"""
         mock_deps["cache"].get.return_value = MOCK_TRENDING_DATA
         
-        response = client.get("/api/v1/coins/trending")
+        response = authorized_client.get("/api/v1/coins/trending")
         assert response.status_code == 200
         assert response.json() == MOCK_TRENDING_DATA
         

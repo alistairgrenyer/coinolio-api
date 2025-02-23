@@ -48,7 +48,7 @@ async def validate_request_size(request: Request, token_data: Optional[TokenData
     content_length = request.headers.get('content-length')
     if content_length:
         size = int(content_length)
-        tier = token_data.tier if token_data else SubscriptionTier.GUEST
+        tier = token_data.subscription_tier if token_data else SubscriptionTier.GUEST
         limits = TierPrivileges.get_rate_limits(tier)
         if size > limits['max_payload_size']:
             raise HTTPException(
@@ -56,12 +56,12 @@ async def validate_request_size(request: Request, token_data: Optional[TokenData
                 detail=f"Request payload too large. Maximum size is {limits['max_payload_size'] // 1024}kb"
             )
 
-def check_subscription(required_tier: SubscriptionTier):
+def check_subscription(required_tiers: set[SubscriptionTier]):
     """Factory for creating subscription tier check dependencies"""
     async def check_subscription_inner(token_data: TokenData = Depends(get_token_data)):
-        if not token_data or token_data.tier != required_tier:
+        if not token_data or token_data.subscription_tier not in required_tiers:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"This endpoint requires {required_tier} subscription"
+                detail=f"This endpoint requires one of {', '.join(required_tiers)} subscription"
             )
     return check_subscription_inner

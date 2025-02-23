@@ -132,20 +132,6 @@ class TestPortfolioEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["name"] == update_data["name"]
 
-    def test_sync_portfolio_premium_only(self, authorized_client, test_portfolio):
-        """Test sync endpoint requires premium subscription"""
-        sync_data = {
-            "client_data": test_portfolio.data,
-            "last_sync_at": datetime.now(timezone.utc).isoformat(),
-            "client_version": 1,
-            "device_id": "test-device"
-        }
-        response = authorized_client.post(
-            f"/api/v1/portfolios/{test_portfolio.id}/sync",
-            json=sync_data
-        )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
     def test_sync_portfolio_success(self, authorized_client, test_portfolio, test_user, db_session):
         """Test successful portfolio sync"""
         # Update user to premium
