@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from deepdiff import DeepDiff
 from sqlalchemy.orm import Session
@@ -17,7 +17,7 @@ class SyncManager:
     def __init__(self):
         self.SYNC_VERSION = "1.0.0"
 
-    def generate_sync_metadata(self, device_id: str) -> Dict[str, Any]:
+    def generate_sync_metadata(self, device_id: str) -> dict[str, Any]:
         """Generate sync metadata for a portfolio update"""
         return {
             "sync_version": self.SYNC_VERSION,
@@ -38,7 +38,7 @@ class SyncManager:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
 
-    def get_sync_status(self, portfolio: Portfolio, sync_request: SyncRequest) -> Dict[str, Any]:
+    def get_sync_status(self, portfolio: Portfolio, sync_request: SyncRequest) -> dict[str, Any]:
         """Get sync status and detect conflicts"""
         if not portfolio.is_cloud_synced:
             return {
@@ -79,7 +79,7 @@ class SyncManager:
             "server_last_sync": portfolio.last_sync_at
         }
 
-    def merge_portfolios(self, portfolio: Portfolio, sync_request: SyncRequest) -> Dict[str, Any]:
+    def merge_portfolios(self, portfolio: Portfolio, sync_request: SyncRequest) -> dict[str, Any]:
         """
         Merge client data with server data using last-write-wins strategy.
         Returns the merged data.
@@ -101,7 +101,7 @@ class SyncManager:
 
         return merged_data
 
-    def detect_changes(self, old_data: Dict[str, Any], new_data: Dict[str, Any]) -> List[SyncChange]:
+    def detect_changes(self, old_data: dict[str, Any], new_data: dict[str, Any]) -> list[SyncChange]:
         """
         Detect changes between old and new portfolio data.
         Returns a list of SyncChange objects.
@@ -161,7 +161,7 @@ class SyncManager:
 
         return changes
 
-    def _get_value_by_path(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_value_by_path(self, data: dict[str, Any], path: str) -> Any:
         """Get a value from a nested dictionary using a dot-separated path"""
         current = data
         for key in path.split('.'):

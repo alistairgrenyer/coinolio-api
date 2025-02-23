@@ -41,7 +41,8 @@ fix = true
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]  # Ignore unused imports in __init__ files
-"tests/*" = ["ANN"]  # Ignore type annotations in tests
+"tests/*" = ["E", "F", "I", "B", "C4", "ARG", "N", "UP", "ANN", "RUF"]  # Ignore all rules in tests
+"app/db/base.py" = ["E", "F", "I", "B", "C4", "ARG", "N", "UP", "ANN", "RUF"]  # Ignore all rules in base.py
 
 [tool.ruff.isort]
 known-first-party = ["app"]

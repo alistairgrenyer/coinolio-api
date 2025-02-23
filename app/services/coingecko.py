@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Optional
 
 import httpx
 
@@ -12,7 +12,7 @@ class CoinGeckoService:
         self.api_key = settings.COINGECKO_API_KEY
         self.headers = {"X-CG-Pro-API-Key": self.api_key} if self.api_key else {}
 
-    async def get_coins_markets(self, vs_currency: str = "usd", ids: Optional[List[str]] = None) -> List[Dict]:
+    async def get_coins_markets(self, vs_currency: str = "usd", ids: Optional[list[str]] = None) -> list[dict]:
         """
         Get current data for multiple coins in a single request
         """
@@ -35,7 +35,7 @@ class CoinGeckoService:
             response.raise_for_status()
             return response.json()
 
-    async def get_coin_price(self, coin_id: str, vs_currency: str = "usd") -> Dict:
+    async def get_coin_price(self, coin_id: str, vs_currency: str = "usd") -> dict:
         """
         Get current price of a single coin
         """
@@ -56,7 +56,7 @@ class CoinGeckoService:
         coin_id: str,
         vs_currency: str = "usd",
         days: int = 1
-    ) -> Dict:
+    ) -> dict:
         """
         Get historical market data for a coin
         """
@@ -73,7 +73,7 @@ class CoinGeckoService:
             response.raise_for_status()
             return response.json()
 
-    async def get_trending_coins(self) -> Dict:
+    async def get_trending_coins(self) -> dict:
         """
         Get trending coins data
         """

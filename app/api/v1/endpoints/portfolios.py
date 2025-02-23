@@ -17,7 +17,9 @@ from app.schemas.portfolio_sync import (
 )
 from app.services.sync_manager import SyncManager
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))]
+)
 sync_manager = SyncManager()
 
 def ensure_timezone_aware(dt: Optional[datetime]) -> datetime:
@@ -33,7 +35,6 @@ async def create_portfolio(
     portfolio_in: PortfolioCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Create a new portfolio"""
     portfolio = Portfolio(
@@ -63,7 +64,6 @@ async def get_portfolio(
     portfolio_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Get a specific portfolio"""
     portfolio = db.query(Portfolio).filter(
@@ -85,7 +85,6 @@ async def update_portfolio(
     portfolio_in: PortfolioUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Update a portfolio"""
     portfolio = db.query(Portfolio).filter(
@@ -118,7 +117,6 @@ async def sync_portfolio(
     sync_request: SyncRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> SyncResponse:
     """
     Sync a portfolio from mobile storage to cloud (Premium feature)
@@ -159,7 +157,6 @@ async def get_sync_status(
     device_id: str = Query(..., description="Client device ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> SyncStatusResponse:
     """Get sync status and detect if conflicts exist"""
     portfolio = db.query(Portfolio).filter(
