@@ -1,9 +1,12 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, Enum as SQLEnum
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
-from app.models.enums import UserRole, SubscriptionTier
+from app.models.enums import SubscriptionTier, UserRole
+
 
 # Test-specific models using SQLite-compatible types
 class User(Base):

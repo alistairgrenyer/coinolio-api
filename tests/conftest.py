@@ -1,19 +1,19 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from datetime import timedelta
-from unittest.mock import patch
 
-from app.main import app
-from app.db.base_model import Base
-from app.db.base import get_db
 from app.core.config import get_settings
+from app.db.base import get_db
+from app.db.base_model import Base
+from app.main import app
 from app.models.enums import SubscriptionTier
 from app.services.auth import auth_service
-
-from tests.utils.redis import MockRedis
 from tests.utils.client import CustomTestClient
+from tests.utils.redis import MockRedis
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

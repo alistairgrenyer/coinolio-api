@@ -1,13 +1,14 @@
-from datetime import datetime, timezone
 from copy import deepcopy
+from datetime import datetime, timezone
+
 import pytest
 from fastapi import status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.user import User
-from app.models.portfolio import Portfolio
 from app.models.enums import SubscriptionTier
+from app.models.portfolio import Portfolio
+from app.models.user import User
 
 settings = get_settings()
 

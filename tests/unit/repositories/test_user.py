@@ -1,11 +1,13 @@
 """Test cases for the user repository"""
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
-from app.models.user import User, RefreshToken
-from app.models.enums import SubscriptionTier, UserRole
-from app.repositories.user import user_repository, refresh_token_repository
+import pytest
+
+from app.models.enums import SubscriptionTier
+from app.models.user import RefreshToken, User
+from app.repositories.user import refresh_token_repository, user_repository
 from app.services.auth import auth_service
+
 
 @pytest.fixture
 def test_users(db_session):

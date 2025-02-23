@@ -1,13 +1,15 @@
 """Test cases for the portfolio repository"""
-import pytest
-from typing import Dict, Any
 import datetime
+from typing import Any
+
+import pytest
 from deepdiff import DeepDiff
 
 from app.models.portfolio import Portfolio
 from app.models.user import User
 from app.repositories.portfolio import portfolio_repository
-from app.schemas.portfolio import PortfolioCreate, PortfolioUpdate
+from app.schemas.portfolio import PortfolioUpdate
+
 
 @pytest.fixture
 def test_user(db_session) -> User:
@@ -23,7 +25,7 @@ def test_user(db_session) -> User:
     return user
 
 @pytest.fixture
-def sample_portfolio_data() -> Dict[str, Any]:
+def sample_portfolio_data() -> dict[str, Any]:
     """Sample portfolio data that would come from AsyncStorage"""
     return {
         "portfolios": {

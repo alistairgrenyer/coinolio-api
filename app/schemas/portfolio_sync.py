@@ -1,7 +1,9 @@
-from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, model_validator, ConfigDict
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 
 class AssetTransaction(BaseModel):
     timestamp: datetime
@@ -87,7 +89,7 @@ class PortfolioMetadata(BaseModel):
     def ensure_timezone_aware(cls, values):
         if not isinstance(values, dict):
             return values
-        if 'last_price_update' in values and values['last_price_update']:
+        if values.get('last_price_update'):
             dt = values['last_price_update']
             if isinstance(dt, str):
                 try:
@@ -164,7 +166,7 @@ class SyncRequest(BaseModel):
     def ensure_timezone_aware(cls, values):
         if not isinstance(values, dict):
             return values
-        if 'last_sync_at' in values and values['last_sync_at']:
+        if values.get('last_sync_at'):
             dt = values['last_sync_at']
             if isinstance(dt, str):
                 try:
@@ -193,7 +195,7 @@ class SyncStatusResponse(BaseModel):
     def ensure_timezone_aware(cls, values):
         if not isinstance(values, dict):
             return values
-        if 'server_last_sync' in values and values['server_last_sync']:
+        if values.get('server_last_sync'):
             dt = values['server_last_sync']
             if isinstance(dt, str):
                 try:
@@ -223,7 +225,7 @@ class SyncResponse(BaseModel):
     def ensure_timezone_aware(cls, values):
         if not isinstance(values, dict):
             return values
-        if 'last_sync_at' in values and values['last_sync_at']:
+        if values.get('last_sync_at'):
             dt = values['last_sync_at']
             if isinstance(dt, str):
                 try:

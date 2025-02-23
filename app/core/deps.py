@@ -1,14 +1,14 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, status, Request
+
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.base import get_db
 from app.models.enums import SubscriptionTier, TierPrivileges
-from app.core.rate_limit import rate_limiter
+from app.models.user import TokenData, User
 from app.services.auth import auth_service
-from app.models.user import User, TokenData
 
 settings = get_settings()
 

@@ -1,9 +1,11 @@
 """Custom test client implementation."""
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
 import json
 from datetime import datetime
 from typing import Any
+
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
+
 
 class CustomJSONEncoder(json.JSONEncoder):
     """Custom JSON encoder that handles datetime objects"""

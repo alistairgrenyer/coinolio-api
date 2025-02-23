@@ -1,6 +1,8 @@
 import json
-from sqlalchemy.types import TypeDecorator, TEXT
 from datetime import datetime, timezone
+
+from sqlalchemy.types import TEXT, TypeDecorator
+
 
 class JSONEncodedDict(TypeDecorator):
     """Custom SQLAlchemy TypeDecorator for JSON that serializes datetime."""

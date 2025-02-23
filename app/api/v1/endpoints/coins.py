@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.deps import get_token_data
-from app.services.auth import TokenData
-from app.services.coingecko import CoinGeckoService
-from app.services.cache import RedisCache
 from app.models.enums import TierPrivileges
+from app.services.auth import TokenData
+from app.services.cache import RedisCache
+from app.services.coingecko import CoinGeckoService
 
 router = APIRouter()
 coingecko = CoinGeckoService()

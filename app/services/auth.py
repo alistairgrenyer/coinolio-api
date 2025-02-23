@@ -1,15 +1,15 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from fastapi import HTTPException, status
-from jose import jwt, JWTError
-from sqlalchemy.orm import Session
+from jose import JWTError, jwt
 from passlib.context import CryptContext
-import uuid
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.user import User, RefreshToken, TokenData
 from app.models.enums import SubscriptionTier, TierPrivileges
-from app.repositories.user import user_repository, refresh_token_repository
+from app.models.user import RefreshToken, TokenData, User
+from app.repositories.user import refresh_token_repository, user_repository
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

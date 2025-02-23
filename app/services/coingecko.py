@@ -1,5 +1,7 @@
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 import httpx
+
 from app.core.config import get_settings
 
 settings = get_settings()

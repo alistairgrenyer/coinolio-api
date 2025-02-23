@@ -1,9 +1,12 @@
-import pytest
 from copy import deepcopy
 from datetime import datetime, timezone
-from app.services.sync_manager import SyncManager
+
+import pytest
+
 from app.models.portfolio import Portfolio
-from app.schemas.portfolio_sync import SyncRequest, ChangeType
+from app.schemas.portfolio_sync import ChangeType, SyncRequest
+from app.services.sync_manager import SyncManager
+
 
 @pytest.fixture
 def sync_manager():

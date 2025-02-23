@@ -1,11 +1,13 @@
 """Test cases for the base repository"""
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, DateTime, Integer, String
 
 from app.db.base_class import Base
 from app.repositories.base import BaseRepository
+
 
 # Test models
 class TestModel(Base):

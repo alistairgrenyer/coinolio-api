@@ -1,9 +1,9 @@
 """Test cases for the coins endpoints"""
-import pytest
-from datetime import timedelta
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.models.enums import SubscriptionTier
-from app.services.auth import auth_service
 
 # Test data
 MOCK_PRICES_DATA = {

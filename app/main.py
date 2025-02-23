@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.endpoints import auth, coins, portfolios, subscriptions
 from app.core.config import get_settings
-from app.api.v1.endpoints import auth, portfolios, subscriptions, coins
 
 settings = get_settings()
 

@@ -1,9 +1,9 @@
-from typing import Generator
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
-from app.db.base_class import Base
 
 settings = get_settings()
 

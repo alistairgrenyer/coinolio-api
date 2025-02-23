@@ -1,10 +1,12 @@
-from typing import Optional, List
-from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from typing import List, Optional
 
-from app.repositories.base import BaseRepository
-from app.models.user import User, UserCreate, UserResponse, RefreshToken
+from sqlalchemy.orm import Session
+
 from app.models.enums import SubscriptionTier
+from app.models.user import RefreshToken, User, UserCreate, UserResponse
+from app.repositories.base import BaseRepository
+
 
 class UserRepository(BaseRepository[User, UserCreate, UserResponse]):
     def get_by_email(self, db: Session, *, email: str) -> Optional[User]:

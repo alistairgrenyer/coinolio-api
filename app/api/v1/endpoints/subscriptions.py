@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-import stripe
-from pydantic import BaseModel
 
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.v1.endpoints.auth import get_current_user
 from app.core.config import get_settings
 from app.db.base import get_db
-from app.api.v1.endpoints.auth import get_current_user
-from app.models.user import User
 from app.models.enums import SubscriptionTier
+from app.models.user import User
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_API_KEY
@@ -69,9 +70,9 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError as e:
+    except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
     
     if event["type"] == "customer.subscription.created":

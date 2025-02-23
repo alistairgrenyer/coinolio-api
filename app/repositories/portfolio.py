@@ -1,9 +1,10 @@
-from typing import Optional, List
-from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from typing import List, Optional
 
-from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session
+
 from app.models.portfolio import Portfolio
+from app.repositories.base import BaseRepository
+
 
 class PortfolioRepository(BaseRepository[Portfolio, Portfolio, Portfolio]):
     def get_by_user(

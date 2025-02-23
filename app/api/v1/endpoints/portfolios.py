@@ -1,18 +1,19 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from typing import List, Optional
 
-from app.db.base import get_db
-from app.core.deps import check_subscription
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.api.v1.endpoints.auth import get_current_user
-from app.models import User, Portfolio
+from app.core.deps import check_subscription
+from app.db.base import get_db
+from app.models import Portfolio, User
 from app.models.enums import SubscriptionTier
-from app.schemas.portfolio import (
-    PortfolioCreate, PortfolioUpdate, PortfolioResponse
-)
+from app.schemas.portfolio import PortfolioCreate, PortfolioResponse, PortfolioUpdate
 from app.schemas.portfolio_sync import (
-    SyncRequest, SyncResponse, SyncStatusResponse,
+    SyncRequest,
+    SyncResponse,
+    SyncStatusResponse,
 )
 from app.services.sync_manager import SyncManager
 

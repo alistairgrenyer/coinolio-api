@@ -1,9 +1,12 @@
-from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
 from deepdiff import DeepDiff
 from sqlalchemy.orm import Session
-from app.schemas.portfolio_sync import SyncRequest, SyncChange, ChangeType
+
 from app.models.portfolio import Portfolio
+from app.schemas.portfolio_sync import ChangeType, SyncChange, SyncRequest
+
 
 class SyncManager:
     """

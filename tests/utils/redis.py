@@ -1,7 +1,8 @@
 """Mock Redis implementation for testing."""
+import json
 from typing import Any, Optional
 from unittest.mock import MagicMock
-import json
+
 
 class MockRedis:
     """Mock Redis for both cache and rate limiter"""
