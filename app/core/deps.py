@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -56,7 +56,7 @@ async def validate_request_size(request: Request, token_data: Optional[TokenData
                 detail=f"Request payload too large. Maximum size is {limits['max_payload_size'] // 1024}kb"
             )
 
-def check_subscription(required_tiers: set[SubscriptionTier]):
+def check_subscription(required_tiers: set[SubscriptionTier]) -> Callable:
     """Factory for creating subscription tier check dependencies"""
     async def check_subscription_inner(token_data: TokenData = Depends(get_token_data)):
         if not token_data or token_data.subscription_tier not in required_tiers:

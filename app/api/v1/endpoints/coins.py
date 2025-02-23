@@ -86,7 +86,7 @@ async def get_coin_history(
 
 @router.get("/trending")
 async def get_trending_coins(
-    token_data: TokenData = Depends(get_token_data)
+    token_data: TokenData = Depends(get_token_data)  # noqa: ARG001
 ) -> dict:
     """
     Get trending coins in the last 24 hours.

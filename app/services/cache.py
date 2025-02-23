@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Optional, Union
 
 import redis
 
@@ -15,14 +15,14 @@ class RedisCache:
         )
         self.default_expire = settings.CACHE_EXPIRE_MINUTES * 60  # Convert to seconds
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Optional[Union[dict, list, str, int, float, bool]]:
         """Get value from cache"""
         data = self.redis.get(key)
         if data:
             return json.loads(data)
         return None
 
-    async def set(self, key: str, value: Any, expire: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Union[dict, list, str, int, float, bool], expire: Optional[int] = None) -> None:
         """Set value in cache"""
         expire = expire or self.default_expire
         self.redis.setex(

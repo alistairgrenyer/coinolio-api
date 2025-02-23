@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import pytest
 from fastapi import status
@@ -147,11 +147,14 @@ class TestPortfolioEndpoints:
         # Create sync data with timezone-aware datetime and modified data
         modified_data = deepcopy(test_portfolio.data)
         modified_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"
-        modified_data["metadata"]["timestamp"] = datetime.now(timezone.utc).isoformat()
         
+        # Ensure client timestamp is newer than server timestamp
+        client_time = datetime.now(timezone.utc) + timedelta(seconds=1)
+        modified_data["metadata"]["timestamp"] = client_time.isoformat()
+
         sync_data = {
             "client_data": modified_data,
-            "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            "last_sync_at": client_time.isoformat(),
             "client_version": initial_version,
             "device_id": "test-device"
         }

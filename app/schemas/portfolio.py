@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class PortfolioBase(BaseModel):
     """Base schema for portfolio data"""
     name: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 class PortfolioCreate(PortfolioBase):
     """Schema for creating a new portfolio"""
@@ -16,7 +16,7 @@ class PortfolioCreate(PortfolioBase):
 class PortfolioUpdate(PortfolioBase):
     """Schema for updating an existing portfolio"""
     name: Optional[str] = None
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[dict[str, Any]] = None
     device_id: Optional[str] = None
 
 class PortfolioResponse(PortfolioBase):

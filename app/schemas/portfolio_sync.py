@@ -50,7 +50,7 @@ class SyncRequest(BaseModel):
 
     @model_validator(mode='before')
     @classmethod
-    def validate(cls, values):
+    def validate(cls, values: dict[str, Any]) -> dict[str, Any]:
         return ensure_timezone_aware(values, 'last_sync_at')
 
 class SyncStatusResponse(BaseModel):
@@ -67,7 +67,7 @@ class SyncStatusResponse(BaseModel):
 
     @model_validator(mode='before')
     @classmethod
-    def validate(cls, values):
+    def validate(cls, values: dict[str, Any]) -> dict[str, Any]:
         return ensure_timezone_aware(values, 'server_last_sync')
 
 class SyncResponse(BaseModel):
@@ -85,5 +85,5 @@ class SyncResponse(BaseModel):
 
     @model_validator(mode='before')
     @classmethod
-    def validate(cls, values):
+    def validate(cls, values: dict[str, Any]) -> dict[str, Any]:
         return ensure_timezone_aware(values, 'last_sync_at')

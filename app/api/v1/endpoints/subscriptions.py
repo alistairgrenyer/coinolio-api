@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -70,10 +69,10 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid payload") from e
+    except stripe.error.SignatureVerificationError as e:
+        raise HTTPException(status_code=400, detail="Invalid signature") from e
     
     if event["type"] == "customer.subscription.created":
         subscription = event["data"]["object"]
@@ -104,7 +103,7 @@ async def stripe_webhook(
 @router.get("/status", response_model=SubscriptionStatus)
 async def get_subscription_status(
     current_user: User = Depends(get_current_user)
-) -> Any:
+) -> SubscriptionStatus:
     """Get current user's subscription status"""
     
     status = SubscriptionStatus(
@@ -125,8 +124,7 @@ async def get_subscription_status(
 
 @router.post("/cancel")
 async def cancel_subscription(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ) -> dict:
     """Cancel premium subscription"""
     if not current_user.stripe_subscription_id:
@@ -147,4 +145,4 @@ async def cancel_subscription(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
-        )
+        ) from e
