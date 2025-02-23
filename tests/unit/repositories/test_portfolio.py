@@ -1,7 +1,8 @@
 """Test cases for the portfolio repository"""
-import pytest, approx
+import pytest
 from typing import Dict, Any
-import json
+import datetime
+from deepdiff import DeepDiff
 
 from app.models.portfolio import Portfolio
 from app.models.user import User
@@ -46,7 +47,7 @@ def sample_portfolio_data() -> Dict[str, Any]:
     }
 
 @pytest.fixture
-def test_portfolio_repository_repository(db_session, test_user) -> Portfolio:
+def test_portfolio_repository(db_session, test_user) -> Portfolio:
     """Create a test portfolio"""
     portfolio = Portfolio(
         user_id=test_user.id,
@@ -76,7 +77,7 @@ class TestPortfolioRepository:
         )
 
         assert portfolio.name == portfolio_in["name"]
-        assert portfolio.data == approx(portfolio_in["data"])
+        assert not DeepDiff(sample_portfolio_data, portfolio.data, ignore_order=True, exclude_types={datetime.datetime})
         assert portfolio.user_id == portfolio_in["user_id"]
         assert portfolio.version == 1
         assert not portfolio.is_cloud_synced
