@@ -1,11 +1,10 @@
-from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 
-from app.core.deps import get_optional_current_user, check_rate_limit
+from app.core.deps import get_token_data
+from app.services.auth import TokenData
 from app.services.coingecko import CoinGeckoService
 from app.services.cache import RedisCache
-from app.models.user import User
-from app.models.enums import SubscriptionTier, TIER_LIMITS
+from app.models.enums import TierPrivileges
 
 router = APIRouter()
 coingecko = CoinGeckoService()
@@ -18,12 +17,11 @@ CACHE_DURATION = 60  # 1 minute for all users
 async def get_coin_prices(
     ids: str = Query(..., description="Comma-separated list of coin ids"),
     vs_currency: str = Query(default="usd", description="The target currency of market data"),
-    _: None = Depends(check_rate_limit),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    token_data: TokenData = Depends(get_token_data)
 ) -> dict:
     """
     Get current prices for a list of coins.
-    Public endpoint with rate limiting for unauthenticated users.
+    Guest accessable endpoint.
     """
     if not ids:
         raise HTTPException(
@@ -55,19 +53,15 @@ async def get_coin_history(
     coin_id: str,
     days: int = Query(default=1, le=365, description="Number of days of historical data"),
     vs_currency: str = Query(default="usd", description="The target currency of market data"),
-    _: None = Depends(check_rate_limit),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    token_data: TokenData = Depends(get_token_data)
 ) -> dict:
     """
     Get historical price data for a coin.
-    Public endpoint with rate limiting for unauthenticated users.
+    Guest accessable endpoint.
     Premium users get access to more historical data.
     """
     # Check user's data access limits
-    max_days = TIER_LIMITS[
-        current_user.subscription_tier if current_user 
-        else SubscriptionTier.FREE
-    ]["historical_data_days"]
+    max_days = TierPrivileges.get_historical_data_days(token_data.subscription_tier)
     
     if days > max_days:
         raise HTTPException(
@@ -91,12 +85,11 @@ async def get_coin_history(
 
 @router.get("/trending")
 async def get_trending_coins(
-    _: None = Depends(check_rate_limit),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    token_data: TokenData = Depends(get_token_data)
 ) -> dict:
     """
     Get trending coins in the last 24 hours.
-    Public endpoint with rate limiting for unauthenticated users.
+    Guest accessable endpoint.
     """
     cache_key = "trending_coins"
     cached_data = await cache.get(cache_key)

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -86,7 +86,7 @@ class Token(BaseModel):
     )
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    email: Optional[str] = Field(default=None, alias="sub")
     role: Optional[UserRole] = None
     subscription_tier: Optional[SubscriptionTier] = None
 
@@ -96,3 +96,6 @@ class TokenData(BaseModel):
             datetime: lambda dt: dt.isoformat()
         }
     )
+
+class Refresh(BaseModel):
+    refresh_token: str

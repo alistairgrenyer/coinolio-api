@@ -9,8 +9,8 @@ from app.main import app
 from app.db.base_model import Base
 from app.db.base import get_db
 from app.core.config import get_settings
-from app.core.security import create_access_token, get_password_hash
 from app.models.enums import SubscriptionTier
+from app.services.auth import auth_service
 
 from tests.utils.redis import MockRedis
 from tests.utils.client import CustomTestClient
@@ -142,7 +142,7 @@ def test_user(db_session):
     
     user = User(
         email="test@example.com",
-        hashed_password=get_password_hash("testpassword123"),
+        hashed_password=auth_service.get_password_hash("testpassword123"),
         is_active=True,
         subscription_tier=SubscriptionTier.FREE
     )
@@ -154,8 +154,12 @@ def test_user(db_session):
 @pytest.fixture
 def test_user_token(test_user, test_settings):
     """Create a test token for authentication"""
-    return create_access_token(
-        data={"sub": test_user.email},
+    return auth_service.create_access_token(
+        data={
+            "sub": test_user.email,
+            "tier": test_user.subscription_tier,
+            "role": test_user.role
+        },
         expires_delta=timedelta(minutes=30),
     )
 

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.db.base import get_db
-from app.core.deps import check_subscription, check_portfolio_limit
+from app.core.deps import check_subscription
 from app.api.v1.endpoints.auth import get_current_user
 from app.models import User, Portfolio
 from app.models.enums import SubscriptionTier
@@ -32,7 +32,6 @@ async def create_portfolio(
     portfolio_in: PortfolioCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _: None = Depends(check_portfolio_limit),
 ) -> Portfolio:
     """Create a new portfolio"""
     portfolio = Portfolio(
@@ -42,7 +41,7 @@ async def create_portfolio(
         version=1,
         is_cloud_synced=True,
         last_sync_at=datetime.now(timezone.utc),
-        last_sync_device="web"
+        last_sync_device=portfolio_in.device_id
     )
     db.add(portfolio)
     db.commit()
@@ -101,7 +100,7 @@ async def update_portfolio(
         portfolio.data = portfolio_in.data
         portfolio.version += 1
         portfolio.last_sync_at = datetime.now(timezone.utc)
-        portfolio.last_sync_device = "web"
+        portfolio.last_sync_device = portfolio_in.device_id
     
     db.add(portfolio)
     db.commit()

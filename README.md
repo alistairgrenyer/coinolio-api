@@ -26,8 +26,6 @@ app/
 ├── core/                   # Core functionality and configuration
 │   ├── config.py          # Environment and app configuration (100% coverage)
 │   ├── deps.py            # Dependency injection (74% coverage)
-│   ├── security.py        # JWT and password handling (95% coverage)
-│   ├── json.py            # JSON serialization utilities (90% coverage)
 │   └── rate_limit.py      # Rate limiting implementation (48% coverage)
 │
 ├── db/                     # Database configuration and utilities
@@ -41,11 +39,17 @@ app/
 │   ├── user.py            # User account model (100% coverage)
 │   └── enums.py          # Shared enumerations (100% coverage)
 │
+├── repositories/          # SQLAlchemy repositories
+│   ├── base.py            # Base repository class (100% coverage)
+│   ├── user.py            # User account repository (100% coverage)
+│   └── portfolio.py       # Portfolio data repository (100% coverage)
+│
 ├── schemas/               # Pydantic models for API validation
 │   ├── portfolio.py      # Portfolio data validation (100% coverage)
 │   └── portfolio_sync.py # Sync data validation and types (64% coverage)
 │
 ├── services/             # Business logic and external services
+│   ├── auth.py         # Authentication services (100% coverage)
 │   ├── sync_manager.py  # Portfolio sync orchestration (87% coverage)
 │   ├── cache.py        # Redis caching implementation (62% coverage)
 │   └── coingecko.py    # CoinGecko API integration (41% coverage)
@@ -58,36 +62,11 @@ tests/                   # Test suite
 
 docs/                   # Documentation
 ├── API_REFERENCE.md    # API endpoint documentation
+├── auth_strategy.md    # Authentication implementation details
+├── docker_strategy.md  # Docker deployment strategy
 ├── TESTING_STRATEGY.md # Testing approach and guidelines
 ├── portfolio_strategy.md # Portfolio management implementation details
 └── sync_strategy.md    # Portfolio sync implementation details
-
-### Key Components
-
-1. **API Layer** (`app/api/v1/`)
-   - RESTful endpoints for all application features
-   - JWT-based authentication and authorization
-   - Request validation and response formatting
-
-2. **Core Services** (`app/core/`)
-   - Application configuration and environment management
-   - Security and authentication utilities
-   - Rate limiting and performance optimization
-
-3. **Data Layer** (`app/models/ & app/db/`)
-   - SQLAlchemy models for data persistence
-   - Custom database types and utilities
-   - Migration management with Alembic
-
-4. **Business Logic** (`app/services/`)
-   - Portfolio synchronization between devices
-   - Caching strategy implementation
-   - External API integrations
-
-5. **Schema Validation** (`app/schemas/`)
-   - Request/response data validation
-   - Type safety and data transformation
-   - API documentation generation
 
 ## 🛠️ Implementation Status
 

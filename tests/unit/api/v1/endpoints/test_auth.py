@@ -32,7 +32,7 @@ class TestAuthEndpoints:
         
         # Then try to login
         response = client.post(
-            f"{settings.API_V1_STR}/auth/token",
+            f"{settings.API_V1_STR}/auth/login",
             data={
                 "username": test_user_data["email"],
                 "password": test_user_data["password"]
@@ -53,7 +53,7 @@ class TestAuthEndpoints:
         
         # Then try to login with wrong password
         response = client.post(
-            f"{settings.API_V1_STR}/auth/token",
+            f"{settings.API_V1_STR}/auth/login",
             data={
                 "username": test_user_data["email"],
                 "password": "wrongpassword"
@@ -82,7 +82,7 @@ class TestAuthEndpoints:
             json=test_user_data
         )
         login_response = client.post(
-            f"{settings.API_V1_STR}/auth/token",
+            f"{settings.API_V1_STR}/auth/login",
             data={
                 "username": test_user_data["email"],
                 "password": test_user_data["password"]
@@ -93,7 +93,7 @@ class TestAuthEndpoints:
         # Then try to refresh the token
         response = client.post(
             f"{settings.API_V1_STR}/auth/refresh",
-            data={"refresh_token": refresh_token}  
+            json={"refresh_token": refresh_token}  
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -104,7 +104,7 @@ class TestAuthEndpoints:
     def test_refresh_token_invalid(self, client):
         response = client.post(
             f"{settings.API_V1_STR}/auth/refresh",
-            data={"refresh_token": "invalid_token"}  
+            json={"refresh_token": "invalid_token"}  
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.json()["detail"] == "Invalid or expired refresh token"

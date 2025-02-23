@@ -1,7 +1,20 @@
 """Custom test client implementation."""
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from app.core.json import json_dumps
+import json
+from datetime import datetime
+from typing import Any
+
+class CustomJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime objects"""
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+def json_dumps(obj: Any) -> str:
+    """Helper function to dump JSON with custom encoder"""
+    return json.dumps(obj, cls=CustomJSONEncoder)
 
 class CustomTestClient(TestClient):
     """Custom test client that handles JSON serialization properly"""
