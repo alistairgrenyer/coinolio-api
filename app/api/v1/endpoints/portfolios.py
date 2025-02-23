@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.db.base import get_db
-from app.core.deps import check_subscription, check_portfolio_limit
+from app.core.deps import check_subscription
 from app.api.v1.endpoints.auth import get_current_user
 from app.models import User, Portfolio
 from app.models.enums import SubscriptionTier
@@ -32,7 +32,7 @@ async def create_portfolio(
     portfolio_in: PortfolioCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _: None = Depends(check_portfolio_limit),
+    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Create a new portfolio"""
     portfolio = Portfolio(
@@ -42,7 +42,7 @@ async def create_portfolio(
         version=1,
         is_cloud_synced=True,
         last_sync_at=datetime.now(timezone.utc),
-        last_sync_device="web"
+        last_sync_device=portfolio_in.device_id
     )
     db.add(portfolio)
     db.commit()
@@ -61,7 +61,8 @@ async def get_portfolios(
 async def get_portfolio(
     portfolio_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Get a specific portfolio"""
     portfolio = db.query(Portfolio).filter(
@@ -82,7 +83,8 @@ async def update_portfolio(
     portfolio_id: int,
     portfolio_in: PortfolioUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Update a portfolio"""
     portfolio = db.query(Portfolio).filter(
@@ -101,7 +103,7 @@ async def update_portfolio(
         portfolio.data = portfolio_in.data
         portfolio.version += 1
         portfolio.last_sync_at = datetime.now(timezone.utc)
-        portfolio.last_sync_device = "web"
+        portfolio.last_sync_device = portfolio_in.device_id
     
     db.add(portfolio)
     db.commit()
@@ -115,7 +117,7 @@ async def sync_portfolio(
     sync_request: SyncRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _: None = Depends(check_subscription(SubscriptionTier.PREMIUM))
+    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> SyncResponse:
     """
     Sync a portfolio from mobile storage to cloud (Premium feature)
@@ -156,7 +158,7 @@ async def get_sync_status(
     device_id: str = Query(..., description="Client device ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _: None = Depends(check_subscription(SubscriptionTier.PREMIUM))
+    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> SyncStatusResponse:
     """Get sync status and detect if conflicts exist"""
     portfolio = db.query(Portfolio).filter(

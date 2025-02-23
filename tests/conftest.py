@@ -9,8 +9,8 @@ from app.main import app
 from app.db.base_model import Base
 from app.db.base import get_db
 from app.core.config import get_settings
-from app.core.security import create_access_token, get_password_hash
 from app.models.enums import SubscriptionTier
+from app.services.auth import auth_service
 
 from tests.utils.redis import MockRedis
 from tests.utils.client import CustomTestClient
@@ -142,7 +142,7 @@ def test_user(db_session):
     
     user = User(
         email="test@example.com",
-        hashed_password=get_password_hash("testpassword123"),
+        hashed_password=auth_service.get_password_hash("testpassword123"),
         is_active=True,
         subscription_tier=SubscriptionTier.FREE
     )
@@ -154,8 +154,12 @@ def test_user(db_session):
 @pytest.fixture
 def test_user_token(test_user, test_settings):
     """Create a test token for authentication"""
-    return create_access_token(
-        data={"sub": test_user.email},
+    return auth_service.create_access_token(
+        data={
+            "sub": test_user.email,
+            "subscription_tier": test_user.subscription_tier,
+            "role": test_user.role
+        },
         expires_delta=timedelta(minutes=30),
     )
 
@@ -165,5 +169,42 @@ def authorized_client(client, test_user_token):
     client.headers = {
         **client.headers,
         "Authorization": f"Bearer {test_user_token}"
+    }
+    return client
+
+@pytest.fixture
+def test_premium_user(db_session):
+    """Create a test premium user"""
+    from app.models.user import User
+    
+    user = User(
+        email="test@example.com",
+        hashed_password=auth_service.get_password_hash("testpassword123"),
+        is_active=True,
+        subscription_tier=SubscriptionTier.PREMIUM
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+@pytest.fixture
+def test_premium_user_token(test_premium_user, test_settings):
+    """Create a test token for authentication"""
+    return auth_service.create_access_token(
+        data={
+            "sub": test_premium_user.email,
+            "subscription_tier": test_premium_user.subscription_tier,
+            "role": test_premium_user.role
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+
+@pytest.fixture
+def premium_authorized_client(client, test_premium_user_token):
+    """Create an authorized client with test token"""
+    client.headers = {
+        **client.headers,
+        "Authorization": f"Bearer {test_premium_user_token}"
     }
     return client

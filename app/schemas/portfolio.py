@@ -9,12 +9,13 @@ class PortfolioBase(BaseModel):
 
 class PortfolioCreate(PortfolioBase):
     """Schema for creating a new portfolio"""
-    pass
+    device_id: Optional[str] = None
 
 class PortfolioUpdate(PortfolioBase):
     """Schema for updating an existing portfolio"""
     name: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
+    device_id: Optional[str] = None
 
 class PortfolioResponse(PortfolioBase):
     """Schema for portfolio response"""
