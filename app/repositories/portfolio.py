@@ -1,14 +1,15 @@
-from typing import Optional, List
-from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from typing import Optional
 
-from app.repositories.base import BaseRepository
+from sqlalchemy.orm import Session
+
 from app.models.portfolio import Portfolio
+from app.repositories.base import BaseRepository
+
 
 class PortfolioRepository(BaseRepository[Portfolio, Portfolio, Portfolio]):
     def get_by_user(
         self, db: Session, *, user_id: int, skip: int = 0, limit: int = 100
-    ) -> List[Portfolio]:
+    ) -> list[Portfolio]:
         """Get all portfolios for a user"""
         return (
             db.query(Portfolio)
@@ -28,11 +29,11 @@ class PortfolioRepository(BaseRepository[Portfolio, Portfolio, Portfolio]):
             .first()
         )
     
-    def get_unsynced(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Portfolio]:
+    def get_unsynced(self, db: Session, *, skip: int = 0, limit: int = 100) -> list[Portfolio]:
         """Get portfolios that haven't been synced to the cloud"""
         return (
             db.query(Portfolio)
-            .filter(Portfolio.is_cloud_synced == False)
+            .filter(Portfolio.is_cloud_synced == False)  # noqa: E712
             .offset(skip)
             .limit(limit)
             .all()
@@ -40,7 +41,7 @@ class PortfolioRepository(BaseRepository[Portfolio, Portfolio, Portfolio]):
     
     def get_by_last_sync_device(
         self, db: Session, *, device_id: str, skip: int = 0, limit: int = 100
-    ) -> List[Portfolio]:
+    ) -> list[Portfolio]:
         """Get portfolios last synced from a specific device"""
         return (
             db.query(Portfolio)

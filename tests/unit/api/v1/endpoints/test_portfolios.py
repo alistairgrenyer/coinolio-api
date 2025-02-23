@@ -1,13 +1,14 @@
-from datetime import datetime, timezone
 from copy import deepcopy
+from datetime import datetime, timezone, timedelta
+
 import pytest
 from fastapi import status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.user import User
-from app.models.portfolio import Portfolio
 from app.models.enums import SubscriptionTier
+from app.models.portfolio import Portfolio
+from app.models.user import User
 
 settings = get_settings()
 
@@ -44,7 +45,7 @@ def compare_data(d1, d2):
         for key in d1:
             compare_data(d1[key], d2[key])
     elif isinstance(d1, list) and isinstance(d2, list):
-        assert len(d1) == len(d2), f"List lengths don't match: {len(d1)} != {len(d2)}"
+        assert len(d1) == len(d2), f"list lengths don't match: {len(d1)} != {len(d2)}"
         for i1, i2 in zip(sorted(d1), sorted(d2)):
             compare_data(i1, i2)
     else:
@@ -146,11 +147,14 @@ class TestPortfolioEndpoints:
         # Create sync data with timezone-aware datetime and modified data
         modified_data = deepcopy(test_portfolio.data)
         modified_data["@portfolios"]["default"]["assets"]["btc"]["amount"] = "2.0"
-        modified_data["metadata"]["timestamp"] = datetime.now(timezone.utc).isoformat()
         
+        # Ensure client timestamp is newer than server timestamp
+        client_time = datetime.now(timezone.utc) + timedelta(seconds=1)
+        modified_data["metadata"]["timestamp"] = client_time.isoformat()
+
         sync_data = {
             "client_data": modified_data,
-            "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            "last_sync_at": client_time.isoformat(),
             "client_version": initial_version,
             "device_id": "test-device"
         }

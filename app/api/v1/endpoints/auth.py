@@ -1,15 +1,15 @@
 from datetime import timedelta
-from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.deps import get_db, get_current_user
-from app.models.user import Refresh, User, UserCreate, UserResponse, Token, RefreshToken
+from app.core.deps import get_current_user, get_db
 from app.models.enums import TierPrivileges
-from app.services.auth import auth_service
+from app.models.user import Refresh, Token, User, UserCreate, UserResponse
 from app.repositories.user import user_repository
+from app.services.auth import auth_service
 
 settings = get_settings()
 router = APIRouter()
@@ -20,7 +20,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login
 async def register(
     user_in: UserCreate,
     db: Session = Depends(get_db)
-) -> Any:
+) -> UserResponse:
     """Register a new user"""
     # Check if user exists
     if user_repository.get_by_email(db, email=user_in.email):
@@ -38,7 +38,7 @@ async def register(
 async def login(
     db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
-) -> Any:
+) -> dict[str, str]:
     """Login for access token"""
     user = auth_service.authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -71,7 +71,7 @@ async def login(
 async def refresh(
     token_in: Refresh,
     db: Session = Depends(get_db)
-) -> Any:
+) -> dict[str, str]:
     """Get new access token using refresh token"""
     # Verify refresh token
     db_token = auth_service.verify_refresh_token(db, token_in.refresh_token)
@@ -108,7 +108,7 @@ async def refresh(
 async def logout(
     refresh_token: str,
     db: Session = Depends(get_db)
-) -> Any:
+) -> dict[str, str]:
     """Logout and revoke refresh token"""
     # Verify and revoke refresh token
     db_token = auth_service.verify_refresh_token(db, refresh_token)
@@ -121,6 +121,6 @@ async def logout(
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(
     current_user: User = Depends(get_current_user)
-) -> Any:
+) -> UserResponse:
     """Get current user"""
     return current_user

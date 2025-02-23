@@ -1,15 +1,15 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Any, Optional
+
 from fastapi import HTTPException, status
-from jose import jwt, JWTError
-from sqlalchemy.orm import Session
+from jose import JWTError, jwt
 from passlib.context import CryptContext
-import uuid
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.user import User, RefreshToken, TokenData
 from app.models.enums import SubscriptionTier, TierPrivileges
-from app.repositories.user import user_repository, refresh_token_repository
+from app.models.user import RefreshToken, TokenData, User
+from app.repositories.user import refresh_token_repository, user_repository
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -27,7 +27,7 @@ class AuthService:
         return pwd_context.hash(password)
 
     @staticmethod
-    def create_access_token(data: Dict[str, Any], expires_delta: timedelta) -> str:
+    def create_access_token(data: dict[str, Any], expires_delta: timedelta) -> str:
         """Create a new JWT access token"""
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + expires_delta
@@ -138,8 +138,8 @@ class AuthService:
             token_data = auth_service.get_token_data(token)
             if token_data is None:
                 raise credentials_exception
-        except JWTError:
-            raise credentials_exception
+        except JWTError as e:
+            raise credentials_exception from e
         
         user = user_repository.get_by_email(db, email=token_data.email)
         if user is None:

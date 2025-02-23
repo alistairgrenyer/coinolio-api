@@ -1,9 +1,12 @@
-from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
+from typing import Any, Optional, Union
+
 from deepdiff import DeepDiff
 from sqlalchemy.orm import Session
-from app.schemas.portfolio_sync import SyncRequest, SyncChange, ChangeType
+
 from app.models.portfolio import Portfolio
+from app.schemas.portfolio_sync import ChangeType, SyncChange, SyncRequest
+
 
 class SyncManager:
     """
@@ -14,7 +17,7 @@ class SyncManager:
     def __init__(self):
         self.SYNC_VERSION = "1.0.0"
 
-    def generate_sync_metadata(self, device_id: str) -> Dict[str, Any]:
+    def generate_sync_metadata(self, device_id: str) -> dict[str, Any]:
         """Generate sync metadata for a portfolio update"""
         return {
             "sync_version": self.SYNC_VERSION,
@@ -35,7 +38,7 @@ class SyncManager:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
 
-    def get_sync_status(self, portfolio: Portfolio, sync_request: SyncRequest) -> Dict[str, Any]:
+    def get_sync_status(self, portfolio: Portfolio, sync_request: SyncRequest) -> dict[str, Any]:
         """Get sync status and detect conflicts"""
         if not portfolio.is_cloud_synced:
             return {
@@ -57,8 +60,8 @@ class SyncManager:
         # Check for data differences
         if sync_request.client_data != portfolio.data:
             # Ensure both timestamps are timezone-aware
-            client_time = self._ensure_timezone_aware(sync_request.last_sync_at)
-            server_time = self._ensure_timezone_aware(portfolio.last_sync_at)
+            client_time = self._ensure_timezone_aware(sync_request.last_sync_at)  # noqa: F841
+            server_time = self._ensure_timezone_aware(portfolio.last_sync_at)  # noqa: F841
 
             # Compare timestamps to determine sync direction
             return {
@@ -76,7 +79,7 @@ class SyncManager:
             "server_last_sync": portfolio.last_sync_at
         }
 
-    def merge_portfolios(self, portfolio: Portfolio, sync_request: SyncRequest) -> Dict[str, Any]:
+    def merge_portfolios(self, portfolio: Portfolio, sync_request: SyncRequest) -> dict[str, Any]:
         """
         Merge client data with server data using last-write-wins strategy.
         Returns the merged data.
@@ -98,7 +101,7 @@ class SyncManager:
 
         return merged_data
 
-    def detect_changes(self, old_data: Dict[str, Any], new_data: Dict[str, Any]) -> List[SyncChange]:
+    def detect_changes(self, old_data: dict[str, Any], new_data: dict[str, Any]) -> list[SyncChange]:
         """
         Detect changes between old and new portfolio data.
         Returns a list of SyncChange objects.
@@ -158,7 +161,7 @@ class SyncManager:
 
         return changes
 
-    def _get_value_by_path(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_value_by_path(self, data: dict[str, Any], path: str) -> Union[dict[str, Any], list[Any], str, int, float, bool, None]:
         """Get a value from a nested dictionary using a dot-separated path"""
         current = data
         for key in path.split('.'):
@@ -185,7 +188,7 @@ class SyncManager:
             return portfolio
         
         # Detect changes between client and server data
-        changes = self.detect_changes(portfolio.data, sync_request.client_data)
+        changes = self.detect_changes(portfolio.data, sync_request.client_data)  # noqa: F841
         
         # Merge data
         merged_data = self.merge_portfolios(portfolio, sync_request)

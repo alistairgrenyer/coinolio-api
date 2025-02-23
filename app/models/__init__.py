@@ -1,11 +1,11 @@
-from app.models.user import User, RefreshToken
+from app.models.enums import SubscriptionTier, UserRole
 from app.models.portfolio import Portfolio
-from app.models.enums import UserRole, SubscriptionTier
+from app.models.user import RefreshToken, User
 
 __all__ = [
-    "User",
-    "RefreshToken",
     "Portfolio",
-    "UserRole",
-    "SubscriptionTier"
+    "RefreshToken",
+    "SubscriptionTier",
+    "User",
+    "UserRole"
 ]

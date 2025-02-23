@@ -1,5 +1,7 @@
-from sqlalchemy import JSON, TypeDecorator, Text
 import json
+
+from sqlalchemy import JSON, Text, TypeDecorator
+
 
 class SqliteJson(TypeDecorator):
     """Enables JSON storage by encoding and decoding on the fly."""

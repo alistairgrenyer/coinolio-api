@@ -1,8 +1,12 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
+from typing import Any
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.db.base_class import Base
 from app.db.custom_types import JSONEncodedDict
+
 
 class Portfolio(Base):
     """
@@ -28,9 +32,9 @@ class Portfolio(Base):
     # Relationships
     user = relationship("User", back_populates="portfolios")
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: dict[str, Any]):
         # Ensure timezone awareness for datetime fields
-        if "last_sync_at" in kwargs and kwargs["last_sync_at"]:
+        if kwargs.get("last_sync_at"):
             dt = kwargs["last_sync_at"]
             if isinstance(dt, datetime) and dt.tzinfo is None:
                 kwargs["last_sync_at"] = dt.replace(tzinfo=timezone.utc)

@@ -1,15 +1,15 @@
 from datetime import datetime
-from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-import stripe
-from pydantic import BaseModel
 
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.v1.endpoints.auth import get_current_user
 from app.core.config import get_settings
 from app.db.base import get_db
-from app.api.v1.endpoints.auth import get_current_user
-from app.models.user import User
 from app.models.enums import SubscriptionTier
+from app.models.user import User
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_API_KEY
@@ -70,9 +70,9 @@ async def stripe_webhook(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail="Invalid payload")
+        raise HTTPException(status_code=400, detail="Invalid payload") from e
     except stripe.error.SignatureVerificationError as e:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        raise HTTPException(status_code=400, detail="Invalid signature") from e
     
     if event["type"] == "customer.subscription.created":
         subscription = event["data"]["object"]
@@ -103,7 +103,7 @@ async def stripe_webhook(
 @router.get("/status", response_model=SubscriptionStatus)
 async def get_subscription_status(
     current_user: User = Depends(get_current_user)
-) -> Any:
+) -> SubscriptionStatus:
     """Get current user's subscription status"""
     
     status = SubscriptionStatus(
@@ -124,8 +124,7 @@ async def get_subscription_status(
 
 @router.post("/cancel")
 async def cancel_subscription(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ) -> dict:
     """Cancel premium subscription"""
     if not current_user.stripe_subscription_id:
@@ -146,4 +145,4 @@ async def cancel_subscription(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
-        )
+        ) from e

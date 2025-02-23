@@ -24,3 +24,33 @@ asyncio_mode = "auto"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[tool.ruff]
+# Same as Black.
+line-length = 88
+
+# Assume Python 3.9
+target-version = "py39"
+
+# Automatically fix imports
+fix = true
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`), Pyflakes (`F`), and import sorting (`I`)
+select = ["E", "F", "I", "B", "C4", "ARG", "N", "UP", "ANN", "RUF"]
+ignore = ["E501", "ARG002", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Ignore unused imports in __init__ files
+"tests/*" = ["E", "F", "I", "B", "C4", "ARG", "N", "UP", "ANN", "RUF"]  # Ignore all rules in tests
+"app/db/base.py" = ["E", "F", "I", "B", "C4", "ARG", "N", "UP", "ANN", "RUF"]  # Ignore all rules in base.py
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+suppress-none-returning = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10

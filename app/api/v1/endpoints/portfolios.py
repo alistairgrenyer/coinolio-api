@@ -1,22 +1,25 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from typing import Optional
 
-from app.db.base import get_db
-from app.core.deps import check_subscription
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.api.v1.endpoints.auth import get_current_user
-from app.models import User, Portfolio
+from app.core.deps import check_subscription
+from app.db.base import get_db
+from app.models import Portfolio, User
 from app.models.enums import SubscriptionTier
-from app.schemas.portfolio import (
-    PortfolioCreate, PortfolioUpdate, PortfolioResponse
-)
+from app.schemas.portfolio import PortfolioCreate, PortfolioResponse, PortfolioUpdate
 from app.schemas.portfolio_sync import (
-    SyncRequest, SyncResponse, SyncStatusResponse,
+    SyncRequest,
+    SyncResponse,
+    SyncStatusResponse,
 )
 from app.services.sync_manager import SyncManager
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))]
+)
 sync_manager = SyncManager()
 
 def ensure_timezone_aware(dt: Optional[datetime]) -> datetime:
@@ -32,7 +35,6 @@ async def create_portfolio(
     portfolio_in: PortfolioCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Create a new portfolio"""
     portfolio = Portfolio(
@@ -50,10 +52,10 @@ async def create_portfolio(
     
     return portfolio
 
-@router.get("", response_model=List[PortfolioResponse])
+@router.get("", response_model=list[PortfolioResponse])
 async def get_portfolios(
     current_user: User = Depends(get_current_user)
-) -> List[Portfolio]:
+) -> list[Portfolio]:
     """Get all portfolios for the current user"""
     return current_user.portfolios
 
@@ -62,7 +64,6 @@ async def get_portfolio(
     portfolio_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Get a specific portfolio"""
     portfolio = db.query(Portfolio).filter(
@@ -84,7 +85,6 @@ async def update_portfolio(
     portfolio_in: PortfolioUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> Portfolio:
     """Update a portfolio"""
     portfolio = db.query(Portfolio).filter(
@@ -117,7 +117,6 @@ async def sync_portfolio(
     sync_request: SyncRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> SyncResponse:
     """
     Sync a portfolio from mobile storage to cloud (Premium feature)
@@ -158,7 +157,6 @@ async def get_sync_status(
     device_id: str = Query(..., description="Client device ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _ = Depends(check_subscription({SubscriptionTier.PREMIUM, SubscriptionTier.FREE}))
 ) -> SyncStatusResponse:
     """Get sync status and detect if conflicts exist"""
     portfolio = db.query(Portfolio).filter(
@@ -180,5 +178,5 @@ async def get_sync_status(
         last_sync_at=ensure_timezone_aware(portfolio.last_sync_at)
     )
     
-    status = sync_manager.get_sync_status(portfolio, sync_request)
-    return SyncStatusResponse(**status)
+    sync_status = sync_manager.get_sync_status(portfolio, sync_request)
+    return SyncStatusResponse(**sync_status)

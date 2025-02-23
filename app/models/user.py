@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
-from typing import Optional, List
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
-from app.models.enums import UserRole, SubscriptionTier
+from app.models.enums import SubscriptionTier, UserRole
 from app.schemas.portfolio import PortfolioResponse
+
 
 # SQLAlchemy Models
 class User(Base):
@@ -64,7 +67,7 @@ class UserResponse(UserBase):
     subscription_expires_at: Optional[datetime] = None
     stripe_customer_id: Optional[str] = None
     stripe_subscription_id: Optional[str] = None
-    portfolios: List[PortfolioResponse] = []
+    portfolios: list[PortfolioResponse] = []
 
     model_config = ConfigDict(
         from_attributes=True,
