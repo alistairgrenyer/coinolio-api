@@ -87,73 +87,66 @@
 ## Portfolio Endpoints
 
 ### Create Portfolio
-- **Endpoint**: `POST /api/v1/portfolios/`
+- **Endpoint**: `POST /api/v1/portfolios`
 - **Description**: Create a new portfolio
 - **Request Body**:
   ```json
   {
     "name": "My Portfolio",
-    "description": "My crypto investments",
     "data": {
       "assets": {
         "bitcoin": {
           "amount": "1.5",
-          "cost_basis": "35000.00",
-          "notes": "Initial investment"
+          "cost_basis": "35000.00"
         }
-      },
-      "settings": {
-        "default_currency": "USD",
-        "price_alerts": true
-      },
-      "metadata": {
-        "created_from": "web",
-        "last_modified": "2025-02-17T23:47:47Z"
-      },
-      "schema_version": "1.0.0"
-    }
+      }
+    },
+    "device_id": "device_123"  // Optional
   }
   ```
 - **Response**:
   ```json
   {
     "id": 1,
+    "user_id": 1,
     "name": "My Portfolio",
-    "description": "My crypto investments",
-    "is_cloud_synced": false,
-    "created_at": "2025-02-17T23:47:47Z",
-    "updated_at": "2025-02-17T23:47:47Z",
+    "data": {
+      "assets": {
+        "bitcoin": {
+          "amount": "1.5",
+          "cost_basis": "35000.00"
+        }
+      }
+    },
     "version": 1,
-    "data": { ... },
-    "total_value_usd": 52500.0,
-    "asset_count": 1,
-    "last_sync_at": null,
-    "versions": []
+    "is_cloud_synced": true,
+    "last_sync_at": "2025-03-06T18:31:58Z",
+    "last_sync_device": "device_123"
   }
   ```
 
 ### Get All Portfolios
-- **Endpoint**: `GET /api/v1/portfolios/`
+- **Endpoint**: `GET /api/v1/portfolios`
 - **Description**: Get all portfolios for the current user
-- **Query Parameters**:
-  - `include_versions` (boolean): Include version history
-  - `limit_versions` (integer): Number of versions to include
 - **Response**:
   ```json
   [
     {
       "id": 1,
+      "user_id": 1,
       "name": "My Portfolio",
-      "description": "My crypto investments",
-      "is_cloud_synced": false,
-      "created_at": "2025-02-17T23:47:47Z",
-      "updated_at": "2025-02-17T23:47:47Z",
+      "data": {
+        "assets": {
+          "bitcoin": {
+            "amount": "1.5",
+            "cost_basis": "35000.00"
+          }
+        }
+      },
       "version": 1,
-      "data": { ... },
-      "total_value_usd": 52500.0,
-      "asset_count": 1,
-      "last_sync_at": null,
-      "versions": []
+      "is_cloud_synced": true,
+      "last_sync_at": "2025-03-06T18:31:58Z",
+      "last_sync_device": "device_123"
     }
   ]
   ```
@@ -161,122 +154,165 @@
 ### Get Portfolio
 - **Endpoint**: `GET /api/v1/portfolios/{portfolio_id}`
 - **Description**: Get a specific portfolio
-- **Query Parameters**:
-  - `include_versions` (boolean): Include version history
-  - `limit_versions` (integer): Number of versions to include
-- **Response**: Same as single portfolio in Get All Portfolios
+- **Response**: Same as single portfolio in Get All Portfolios response
 
 ### Update Portfolio
 - **Endpoint**: `PUT /api/v1/portfolios/{portfolio_id}`
-- **Description**: Update a portfolio
+- **Description**: Update a portfolio. When data is updated, the version is incremented and sync metadata is updated.
 - **Request Body**:
   ```json
   {
-    "name": "Updated Portfolio",
-    "description": "Updated description",
-    "data": {
+    "name": "Updated Portfolio",  // Optional
+    "data": {                    // Optional
       "assets": {
         "bitcoin": {
           "amount": "2.0",
           "cost_basis": "40000.00"
-        },
-        "ethereum": {
-          "amount": "10.0",
-          "cost_basis": "2500.00"
         }
-      },
-      "settings": {
-        "default_currency": "USD"
-      },
-      "metadata": {
-        "last_modified": "2025-02-17T23:47:47Z"
-      },
-      "schema_version": "1.0.0"
-    }
+      }
+    },
+    "device_id": "device_123"    // Optional
   }
   ```
 - **Response**: Same as Create Portfolio response
 
-### Get Portfolio Versions
-- **Endpoint**: `GET /api/v1/portfolios/{portfolio_id}/versions`
-- **Description**: Get version history for a portfolio
-- **Query Parameters**:
-  - `limit` (integer): Number of versions to return
-  - `offset` (integer): Offset for pagination
-- **Response**:
-  ```json
-  [
-    {
-      "version": 2,
-      "data": { ... },
-      "created_at": "2025-02-17T23:47:47Z",
-      "total_value_usd": 105000.0,
-      "asset_count": 2,
-      "change_summary": {
-        "added_assets": ["ethereum"],
-        "removed_assets": [],
-        "modified_assets": ["bitcoin"]
-      }
-    }
-  ]
-  ```
-
-### Sync Portfolio (Premium Feature)
+### Sync Portfolio
 - **Endpoint**: `POST /api/v1/portfolios/{portfolio_id}/sync`
-- **Description**: Sync portfolio with cloud storage
+- **Description**: Sync a portfolio from mobile storage to cloud (Premium feature). Uses last-write-wins strategy with conflict detection.
 - **Request Body**:
   ```json
   {
     "client_data": {
       "assets": {
         "bitcoin": {
-          "amount": "1.0",
-          "cost_basis": "35000.00"
+          "amount": "2.0",
+          "cost_basis": "40000.00"
         }
-      },
-      "settings": {
-        "default_currency": "USD"
-      },
-      "metadata": {
-        "last_sync": "2025-02-17T23:47:47Z"
-      },
-      "schema_version": "1.0.0"
+      }
     },
-    "last_sync_at": "2025-02-17T23:47:47Z",
-    "client_version": 1,
-    "force": false,
-    "device_id": "test_device"
+    "last_sync_at": "2025-03-06T18:31:58Z",
+    "client_version": 2,
+    "device_id": "device_123"
   }
   ```
 - **Response**:
   ```json
   {
-    "status": "SUCCESS",
-    "server_version": 2,
-    "server_data": { ... },
-    "sync_metadata": {
-      "device_id": "test_device",
-      "had_conflicts": false,
-      "base_version": 2,
-      "changes": []
+    "success": true,
+    "version": 3,
+    "data": {
+      "assets": {
+        "bitcoin": {
+          "amount": "2.0",
+          "cost_basis": "40000.00"
+        }
+      }
     },
-    "is_cloud_synced": true,
-    "last_sync_at": "2025-02-17T23:47:47Z"
+    "changes": [
+      {
+        "type": "modified",
+        "path": "assets.bitcoin",
+        "value": {
+          "amount": "2.0",
+          "cost_basis": "40000.00"
+        }
+      }
+    ],
+    "last_sync_at": "2025-03-06T18:31:58Z"
   }
   ```
 
 ### Get Sync Status
 - **Endpoint**: `GET /api/v1/portfolios/{portfolio_id}/sync/status`
-- **Description**: Get sync status and detect conflicts
+- **Description**: Get sync status and detect if conflicts exist
+- **Query Parameters**:
+  - `client_version` (integer, required): Client's current version
+  - `device_id` (string, required): Client device ID
 - **Response**:
   ```json
   {
-    "is_synced": true,
-    "last_sync_at": "2025-02-17T23:47:47Z",
-    "server_version": 2,
-    "last_sync_device": "test_device",
-    "had_conflicts": false,
-    "pending_changes": 0
+    "needs_sync": true,
+    "has_conflicts": false,
+    "server_version": 3,
+    "server_last_sync": "2025-03-06T18:31:58Z"
+  }
+  ```
+
+## Coin Endpoints
+
+### Get Coin Prices
+- **Endpoint**: `GET /api/v1/coins/prices`
+- **Description**: Get current prices for a list of coins. Guest accessible endpoint.
+- **Query Parameters**:
+  - `ids` (string, required): Comma-separated list of coin ids (e.g., "bitcoin,ethereum")
+  - `vs_currency` (string, optional): The target currency of market data (default: "usd")
+- **Response**:
+  ```json
+  [
+    {
+      "id": "bitcoin",
+      "symbol": "btc",
+      "name": "Bitcoin",
+      "current_price": 65432.10,
+      "market_cap": 1234567890,
+      "market_cap_rank": 1,
+      "price_change_percentage_24h": 2.5,
+      "price_change_24h": 1234.56,
+      "total_volume": 98765432100
+    }
+  ]
+  ```
+
+### Get Coin Historical Data
+- **Endpoint**: `GET /api/v1/coins/historical/{coin_id}`
+- **Description**: Get historical price data for a coin. Guest accessible endpoint. Premium users get access to more historical data.
+- **Path Parameters**:
+  - `coin_id` (string, required): The id of the coin (e.g., "bitcoin")
+- **Query Parameters**:
+  - `days` (integer, optional): Number of days of historical data (default: 1, max: 365)
+  - `vs_currency` (string, optional): The target currency of market data (default: "usd")
+- **Response**:
+  ```json
+  {
+    "prices": [
+      [1646265600000, 43567.89],  // [timestamp, price]
+      [1646352000000, 44123.45]
+    ],
+    "market_caps": [
+      [1646265600000, 824597834563],
+      [1646352000000, 835687245789]
+    ],
+    "total_volumes": [
+      [1646265600000, 38475987234],
+      [1646352000000, 42356897123]
+    ]
+  }
+  ```
+- **Notes**:
+  - Free tier users are limited to 7 days of historical data
+  - Premium tier users can access up to 365 days of historical data
+
+### Get Trending Coins
+- **Endpoint**: `GET /api/v1/coins/trending`
+- **Description**: Get trending coins in the last 24 hours. Guest accessible endpoint.
+- **Response**:
+  ```json
+  {
+    "coins": [
+      {
+        "item": {
+          "id": "bitcoin",
+          "coin_id": 1,
+          "name": "Bitcoin",
+          "symbol": "BTC",
+          "market_cap_rank": 1,
+          "thumb": "https://assets.coingecko.com/coins/images/1/thumb/bitcoin.png",
+          "small": "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+          "large": "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
+          "score": 0
+        }
+      }
+    ]
   }
   ```
 
@@ -359,4 +395,3 @@ curl -X POST http://localhost:8000/api/v1/portfolios/1/sync \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d @sync.json
-```
